@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <header class="topbar">
@@ -63,9 +63,11 @@
     <section class="workspace">
       <div class="canvas-toolbar">
         <div class="segmented"><button class="active" data-mode="select">選択</button><button data-mode="pan">移動</button></div>
+        <button id="fitViewBtn" class="toolbar-button">全体表示</button>
         <div id="imageControls" class="image-controls hidden"><span>下絵</span><input id="imageOpacity" type="range" min="10" max="100" value="45"><button id="removeImageBtn">削除</button></div>
         <div class="scale-control"><span>縮尺</span><button id="zoomOutBtn" aria-label="縮小">−</button><input id="zoom" type="range" min="25" max="200" step="5" value="100"><button id="zoomInBtn" aria-label="拡大">＋</button><output id="zoomLabel">100%</output><small>最大150坪</small></div>
         <label class="grid-control">吸着<select id="gridSize"><option value="0.5">50cm</option><option value="0.25">25cm</option><option value="0.1">10cm</option></select></label>
+        <button id="checkPlanBtn" class="toolbar-button">配置チェック</button>
         <label class="switch-label"><input id="snapToggle" type="checkbox" checked><span class="switch"></span>グリッド吸着</label>
       </div>
       <div class="canvas-wrap" id="canvasWrap">
@@ -84,14 +86,16 @@
       <div id="noSelection" class="no-selection"><span>◇</span><p>要素を選択すると<br>詳細を編集できます</p></div>
       <div id="propertyForm" class="property-form hidden">
         <label>名前<input id="propName"></label>
-        <div class="measure-grid"><label>幅・長さ <span>m</span><input id="propW" type="number" min="0.3" step="0.1"></label><label id="propDepthLabel">奥行 <span>m</span><input id="propH" type="number" min="0.3" step="0.1"></label></div>
-        <label>回転<div class="inline"><input id="propRotation" type="range" min="0" max="270" step="90"><output id="rotationLabel">0°</output></div></label>
+        <div class="measure-grid"><label>幅・長さ <span>m</span><input id="propW" type="number" min="0.1" step="0.1"></label><label id="propDepthLabel">奥行 <span>m</span><input id="propH" type="number" min="0.1" step="0.1"></label></div>
+        <div class="measure-grid"><label>X位置 <span>m</span><input id="propX" type="number" min="0" step="0.1"></label><label>Y位置 <span>m</span><input id="propY" type="number" min="0" step="0.1"></label></div>
+        <label>回転 <span>°</span><input id="propRotation" type="number" min="0" max="359" step="1"></label>
         <label id="thicknessField" class="hidden">線の太さ <span>cm</span><input id="propThickness" type="number" min="5" max="100" step="5"></label>
         <label>カラー<div class="swatches" id="swatches"><button style="--c:#f1e7d4" data-color="#f1e7d4"></button><button style="--c:#e2ebdf" data-color="#e2ebdf"></button><button style="--c:#dce9ee" data-color="#dce9ee"></button><button style="--c:#eee1dc" data-color="#eee1dc"></button><button style="--c:#e8e4ef" data-color="#e8e4ef"></button></div></label>
         <button id="addVertexBtn" class="vertex-action hidden">＋ 頂点を追加</button>
+        <button id="splitWallBtn" class="vertex-action hidden">壁を中央で分割</button>
         <div class="property-actions"><button id="duplicateBtn">複製</button><button id="deleteBtn" class="danger">削除</button></div>
       </div>
-      <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m² / 0.0 畳</strong></div></div>
+      <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m² / 0.0 畳</strong></div><label class="tatami-setting">畳の規格<select id="tatamiSize"><option value="1.62">不動産表示 1.62㎡</option><option value="1.824">京間 1.824㎡</option><option value="1.6562">江戸間 1.656㎡</option><option value="1.445">団地間 1.445㎡</option></select></label></div>
     </aside>
   </main>
   <div id="walkModal" class="walk-modal hidden" role="dialog" aria-modal="true" aria-label="室内ウォークスルー">
@@ -116,6 +120,6 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
