@@ -14,6 +14,9 @@
       <button class="ghost" id="undoBtn" title="元に戻す">↶</button>
       <button class="ghost" id="redoBtn" title="やり直す">↷</button>
       <button class="ghost" id="saveBtn">保存</button>
+      <button class="ghost" id="importBtn">間取り画像を読込</button>
+      <input id="planImageInput" type="file" accept="image/*" hidden>
+      <button class="walkthrough" id="view3dBtn">室内を見る</button>
       <button class="primary" id="exportBtn">PNGを書き出す</button>
     </div>
   </header>
@@ -57,12 +60,14 @@
     <section class="workspace">
       <div class="canvas-toolbar">
         <div class="segmented"><button class="active" data-mode="select">選択</button><button data-mode="pan">移動</button></div>
+        <div id="imageControls" class="image-controls hidden"><span>下絵</span><input id="imageOpacity" type="range" min="10" max="100" value="45"><button id="removeImageBtn">削除</button></div>
         <div class="scale-control"><span>縮尺</span><input id="zoom" type="range" min="60" max="140" value="100"><output id="zoomLabel">100%</output></div>
         <label class="switch-label"><input id="snapToggle" type="checkbox" checked><span class="switch"></span>グリッド吸着</label>
       </div>
       <div class="canvas-wrap" id="canvasWrap">
         <div class="ruler ruler-x"></div><div class="ruler ruler-y"></div>
         <div id="floorCanvas" class="floor-canvas" aria-label="間取り編集キャンバス">
+          <img id="planUnderlay" class="plan-underlay hidden" alt="取り込んだ間取り図">
           <div class="empty-state" id="emptyState"><span>＋</span><strong>部屋を追加して始めましょう</strong><small>左のパレットから部屋を選択してください</small></div>
         </div>
       </div>
@@ -84,6 +89,11 @@
       <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m² / 0.0 畳</strong></div></div>
     </aside>
   </main>
+  <div id="walkModal" class="walk-modal hidden" role="dialog" aria-modal="true" aria-label="室内ウォークスルー">
+    <canvas id="walkCanvas" width="960" height="600"></canvas>
+    <div class="walk-hud"><strong>室内プレビュー</strong><span>WASD / 矢印キーで移動・方向転換</span><button id="closeWalkBtn">編集に戻る</button></div>
+    <div class="walk-crosshair">＋</div>
+  </div>
   <div id="toast" class="toast" role="status"></div>
   <script src="app.js"></script>
 </body>
