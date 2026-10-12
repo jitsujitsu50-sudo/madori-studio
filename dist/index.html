@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <header class="topbar">
@@ -65,6 +65,7 @@
         <div class="segmented"><button class="active" data-mode="select">選択</button><button data-mode="pan">移動</button></div>
         <div id="imageControls" class="image-controls hidden"><span>下絵</span><input id="imageOpacity" type="range" min="10" max="100" value="45"><button id="removeImageBtn">削除</button></div>
         <div class="scale-control"><span>縮尺</span><button id="zoomOutBtn" aria-label="縮小">−</button><input id="zoom" type="range" min="25" max="200" step="5" value="100"><button id="zoomInBtn" aria-label="拡大">＋</button><output id="zoomLabel">100%</output><small>最大150坪</small></div>
+        <label class="grid-control">吸着<select id="gridSize"><option value="0.5">50cm</option><option value="0.25">25cm</option><option value="0.1">10cm</option></select></label>
         <label class="switch-label"><input id="snapToggle" type="checkbox" checked><span class="switch"></span>グリッド吸着</label>
       </div>
       <div class="canvas-wrap" id="canvasWrap">
@@ -115,6 +116,6 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
