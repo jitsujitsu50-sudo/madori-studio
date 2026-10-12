@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f3ee">
+  <title>間取りスタジオ</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">間</span><div><strong>間取りスタジオ</strong><small>暮らしを、寸法から考える。</small></div></div>
+    <div class="top-actions">
+      <button class="ghost" id="undoBtn" title="元に戻す">↶</button>
+      <button class="ghost" id="redoBtn" title="やり直す">↷</button>
+      <button class="ghost" id="saveBtn">保存</button>
+      <button class="primary" id="exportBtn">PNGを書き出す</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar left-panel">
+      <section>
+        <p class="eyebrow">プロジェクト</p>
+        <input id="projectName" class="project-name" value="わが家のプラン A" aria-label="プロジェクト名">
+      </section>
+      <section>
+        <div class="section-title"><span>部屋</span><small>クリックで追加</small></div>
+        <div class="tool-grid" id="roomTools">
+          <button data-add="room" data-name="リビング" data-w="320" data-h="230"><span class="tool-icon room-icon"></span>リビング</button>
+          <button data-add="room" data-name="寝室" data-w="240" data-h="210"><span class="tool-icon room-icon warm"></span>寝室</button>
+          <button data-add="room" data-name="キッチン" data-w="240" data-h="150"><span class="tool-icon room-icon green"></span>キッチン</button>
+          <button data-add="room" data-name="水まわり" data-w="170" data-h="160"><span class="tool-icon room-icon blue"></span>水まわり</button>
+        </div>
+      </section>
+      <section>
+        <div class="section-title"><span>建具・家具</span></div>
+        <div class="tool-grid compact">
+          <button data-add="door" data-name="ドア"><span class="mini-symbol">⌒</span>ドア</button>
+          <button data-add="window" data-name="窓"><span class="mini-symbol">═</span>窓</button>
+          <button data-add="furniture" data-name="ソファ"><span class="mini-symbol">▰</span>ソファ</button>
+          <button data-add="furniture" data-name="テーブル"><span class="mini-symbol">▭</span>テーブル</button>
+          <button data-add="furniture" data-name="ベッド"><span class="mini-symbol">▣</span>ベッド</button>
+          <button data-add="furniture" data-name="収納"><span class="mini-symbol">▥</span>収納</button>
+        </div>
+      </section>
+      <section class="tip"><span>⌁</span><p><strong>ヒント</strong>要素をドラッグして移動。右下のハンドルでサイズを変更できます。</p></section>
+    </aside>
+
+    <section class="workspace">
+      <div class="canvas-toolbar">
+        <div class="segmented"><button class="active" data-mode="select">選択</button><button data-mode="pan">移動</button></div>
+        <div class="scale-control"><span>縮尺</span><input id="zoom" type="range" min="60" max="140" value="100"><output id="zoomLabel">100%</output></div>
+        <label class="switch-label"><input id="snapToggle" type="checkbox" checked><span class="switch"></span>グリッド吸着</label>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="ruler ruler-x"></div><div class="ruler ruler-y"></div>
+        <div id="floorCanvas" class="floor-canvas" aria-label="間取り編集キャンバス">
+          <div class="empty-state" id="emptyState"><span>＋</span><strong>部屋を追加して始めましょう</strong><small>左のパレットから部屋を選択してください</small></div>
+        </div>
+      </div>
+      <footer class="statusbar"><span><i class="dot"></i>自動保存オン</span><span id="statusSummary">0 部屋 ・ 0.0 m²</span></footer>
+    </section>
+
+    <aside class="sidebar inspector">
+      <div class="section-title"><span>プロパティ</span></div>
+      <div id="noSelection" class="no-selection"><span>◇</span><p>要素を選択すると<br>詳細を編集できます</p></div>
+      <div id="propertyForm" class="property-form hidden">
+        <label>名前<input id="propName"></label>
+        <div class="measure-grid"><label>幅 <span>m</span><input id="propW" type="number" min="0.3" step="0.1"></label><label>奥行 <span>m</span><input id="propH" type="number" min="0.3" step="0.1"></label></div>
+        <label>回転<div class="inline"><input id="propRotation" type="range" min="0" max="270" step="90"><output id="rotationLabel">0°</output></div></label>
+        <label>カラー<div class="swatches" id="swatches"><button style="--c:#f1e7d4" data-color="#f1e7d4"></button><button style="--c:#e2ebdf" data-color="#e2ebdf"></button><button style="--c:#dce9ee" data-color="#dce9ee"></button><button style="--c:#eee1dc" data-color="#eee1dc"></button><button style="--c:#e8e4ef" data-color="#e8e4ef"></button></div></label>
+        <div class="property-actions"><button id="duplicateBtn">複製</button><button id="deleteBtn" class="danger">削除</button></div>
+      </div>
+      <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m²</strong></div></div>
+    </aside>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
