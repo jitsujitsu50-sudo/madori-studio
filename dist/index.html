@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=5">
+  <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
   <header class="topbar">
@@ -26,6 +26,7 @@
       <section>
         <p class="eyebrow">プロジェクト</p>
         <input id="projectName" class="project-name" value="わが家のプラン A" aria-label="プロジェクト名">
+        <button id="autoPlanBtn" class="auto-plan-btn">✦ 条件から自動作成</button>
         <button id="importSidebarBtn" class="import-sidebar">＋ 間取り画像を読み込む</button>
       </section>
       <section>
@@ -95,7 +96,22 @@
     <div class="walk-hud"><strong>室内プレビュー</strong><span>WASD / 矢印キーで移動・方向転換</span><button id="closeWalkBtn">編集に戻る</button></div>
     <div class="walk-crosshair">＋</div>
   </div>
+  <div id="autoPlanModal" class="auto-plan-modal hidden" role="dialog" aria-modal="true" aria-labelledby="autoPlanTitle">
+    <div class="auto-plan-card">
+      <p class="eyebrow">AUTO LAYOUT</p><h2 id="autoPlanTitle">希望条件から間取りを作成</h2>
+      <p class="auto-plan-lead">ChatGPTに送った条件をそのまま貼り付けてください。部屋・外壁・家具を編集可能な状態で配置します。</p>
+      <textarea id="autoPlanPrompt" rows="9">平屋
+1LDK
+アイランドキッチンでカウンター付き
+動線が繋がっていて暮らしやすい
+天井2m以上の斜め天井
+延床面積 40〜50㎡</textarea>
+      <label class="keep-plan"><input id="keepExistingPlan" type="checkbox"> 現在の間取りを残して追加する</label>
+      <div class="auto-plan-actions"><button id="cancelAutoPlanBtn">キャンセル</button><button id="generatePlanBtn">間取りを自動作成</button></div>
+      <small>※ 建築確認用の設計図ではありません。寸法・法規・構造は専門家にご確認ください。</small>
+    </div>
+  </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

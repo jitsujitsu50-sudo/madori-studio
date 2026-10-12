@@ -35,6 +35,16 @@ $('planImageInput').onchange=e=>{const file=e.target.files[0];if(!file)return;if
 $('imageOpacity').oninput=e=>$('planUnderlay').style.opacity=e.target.value/100;
 $('removeImageBtn').onclick=()=>{underlayData=null;$('planUnderlay').src='';$('planUnderlay').classList.add('hidden');$('imageControls').classList.add('hidden');localStorage.removeItem('madori-underlay');toast('下絵を削除しました')};
 
+// 希望条件から、編集可能な初期レイアウトをローカルで組み立てる。
+function generatedItem(type,name,x,y,w,h,color,rotation=0){const item={id:uid(),type,name,x,y,w,h,rotation,color};if(type==='room')item.points=[[0,0],[1,0],[1,1],[0,1]];return item}
+function generatePlanFromText(text,keep){checkpoint();if(!keep)items=[];const ldk=Math.max(1,Math.min(4,+((text.match(/([1-4])\s*LDK/i)||[])[1]||1))),range=text.match(/(\d+)\s*[〜~～-]\s*(\d+)\s*(?:㎡|平米)/),single=text.match(/(\d+)\s*(?:㎡|平米)/),target=range?(+range[1]+ +range[2])/2:single?+single[1]:55,base=88+(ldk-1)*18,scale=Math.max(.62,Math.min(1.18,Math.sqrt(target/base))),S=n=>Math.round(n*scale/10)*10,ox=70+(keep?items.length*10:0),oy=70;
+  const rooms=[generatedItem('room','LDK',ox,oy,S(320),S(220),'#f1e7d4'),generatedItem('room','寝室 1',ox+S(320),oy,S(240),S(210),'#eee1dc'),generatedItem('room','洗面・脱衣',ox,oy+S(220),S(150),S(120),'#dce9ee'),generatedItem('room','浴室',ox+S(150),oy+S(220),S(110),S(120),'#d6e5eb'),generatedItem('room','玄関',ox+S(260),oy+S(220),S(120),S(100),'#e8e4df')];
+  for(let n=2;n<=ldk;n++)rooms.push(generatedItem('room',`寝室 ${n}`,ox+S(320),oy+S(210+(n-2)*130),S(240),S(120),'#e8e4ef'));
+  items.push(...rooms);const maxX=Math.max(...rooms.map(r=>r.x+r.w)),maxY=Math.max(...rooms.map(r=>r.y+r.h)),t=14;items.push(generatedItem('wall','外壁',ox-t,oy-t,maxX-ox+t*2,t,'#414844'),generatedItem('wall','外壁',ox-t,maxY,maxX-ox+t*2,t,'#414844'),generatedItem('wall','外壁',ox-t,oy,t,maxY-oy,'#414844'),generatedItem('wall','外壁',maxX,oy,t,maxY-oy,'#414844'));
+  items.push(generatedItem('furniture',/アイランド/.test(text)?'アイランドキッチン':'キッチン',ox+S(80),oy+S(45),S(150),S(55),'#d7ddd2'),generatedItem('furniture','ソファ',ox+S(70),oy+S(135),S(110),S(48),'#d9d2c8'),generatedItem('furniture','ベッド',ox+S(370),oy+S(55),S(110),S(160),'#ded8d3'),generatedItem('door','玄関ドア',ox+S(285),maxY-30,S(65),55,'#e7e5dd'));
+  selected=rooms[0].id;setInspectorCollapsed(false);render();scheduleSave();$('autoPlanModal').classList.add('hidden');toast(`${ldk}LDK・約${Math.round(target)}㎡のたたき台を作成しました`)}
+$('autoPlanBtn').onclick=()=>$('autoPlanModal').classList.remove('hidden');$('cancelAutoPlanBtn').onclick=()=>$('autoPlanModal').classList.add('hidden');$('generatePlanBtn').onclick=()=>generatePlanFromText($('autoPlanPrompt').value,$('keepExistingPlan').checked);$('autoPlanModal').onclick=e=>{if(e.target===$('autoPlanModal'))$('autoPlanModal').classList.add('hidden')};
+
 // 配置済みの部屋輪郭・外壁・柱を線分に変換し、軽量な一人称ビューを描画する。
 const walk={x:450,y:310,a:0,keys:new Set(),raf:0};
 function rotatePoint(x,y,cx,cy,a){const r=a*Math.PI/180,dx=x-cx,dy=y-cy;return[cx+dx*Math.cos(r)-dy*Math.sin(r),cy+dx*Math.sin(r)+dy*Math.cos(r)]}
