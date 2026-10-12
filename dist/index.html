@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
   <header class="topbar">
@@ -28,6 +28,7 @@
         <input id="projectName" class="project-name" value="わが家のプラン A" aria-label="プロジェクト名">
         <button id="autoPlanBtn" class="auto-plan-btn">✦ 条件から自動作成</button>
         <button id="importSidebarBtn" class="import-sidebar">＋ 間取り画像を読み込む</button>
+        <button id="resetPlanBtn" class="reset-plan-btn">配置をすべてリセット</button>
       </section>
       <section>
         <div class="section-title"><span>部屋</span><small>クリックで追加</small></div>
@@ -67,6 +68,7 @@
         <label class="switch-label"><input id="snapToggle" type="checkbox" checked><span class="switch"></span>グリッド吸着</label>
       </div>
       <div class="canvas-wrap" id="canvasWrap">
+        <div class="zoom-dock" aria-label="キャンバスの拡大縮小"><button id="zoomOutDockBtn" aria-label="縮小">−</button><output id="zoomDockLabel">100%</output><button id="zoomInDockBtn" aria-label="拡大">＋</button></div>
         <div class="ruler ruler-x"></div><div class="ruler ruler-y"></div>
         <div id="floorCanvas" class="floor-canvas" aria-label="間取り編集キャンバス">
           <img id="planUnderlay" class="plan-underlay hidden" alt="取り込んだ間取り図">
@@ -112,6 +114,6 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>
