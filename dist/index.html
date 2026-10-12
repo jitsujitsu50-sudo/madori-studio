@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <header class="topbar">
@@ -75,8 +75,8 @@
       <footer class="statusbar"><span><i class="dot"></i>自動保存オン</span><span id="statusSummary">0 部屋 ・ 0.0 m²</span></footer>
     </section>
 
-    <aside class="sidebar inspector">
-      <div class="section-title"><span>プロパティ</span></div>
+    <aside class="sidebar inspector" id="inspectorPanel">
+      <div class="section-title inspector-title" id="inspectorHeader" role="button" tabindex="0" aria-label="プロパティを開く"><span>プロパティ</span><button id="minimizeInspectorBtn" title="プロパティを最小化" aria-label="プロパティを最小化">−</button></div>
       <div id="noSelection" class="no-selection"><span>◇</span><p>要素を選択すると<br>詳細を編集できます</p></div>
       <div id="propertyForm" class="property-form hidden">
         <label>名前<input id="propName"></label>
@@ -96,6 +96,6 @@
     <div class="walk-crosshair">＋</div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
