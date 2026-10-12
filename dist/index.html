@@ -44,7 +44,14 @@
           <button data-add="furniture" data-name="収納"><span class="mini-symbol">▥</span>収納</button>
         </div>
       </section>
-      <section class="tip"><span>⌁</span><p><strong>ヒント</strong>要素をドラッグして移動。右下のハンドルでサイズを変更できます。</p></section>
+      <section>
+        <div class="section-title"><span>構造</span><small>外壁・柱</small></div>
+        <div class="tool-grid compact">
+          <button data-add="wall" data-name="外壁" data-w="240" data-h="14"><span class="mini-symbol wall-symbol"></span>太い外壁線</button>
+          <button data-add="pillar" data-name="柱" data-w="32" data-h="32"><span class="mini-symbol pillar-symbol"></span>柱</button>
+        </div>
+      </section>
+      <section class="tip"><span>⌁</span><p><strong>ヒント</strong>部屋を選んで「頂点を追加」。緑の点をドラッグするとL字などの形を作れます。</p></section>
     </aside>
 
     <section class="workspace">
@@ -69,10 +76,12 @@
         <label>名前<input id="propName"></label>
         <div class="measure-grid"><label>幅 <span>m</span><input id="propW" type="number" min="0.3" step="0.1"></label><label>奥行 <span>m</span><input id="propH" type="number" min="0.3" step="0.1"></label></div>
         <label>回転<div class="inline"><input id="propRotation" type="range" min="0" max="270" step="90"><output id="rotationLabel">0°</output></div></label>
+        <label id="thicknessField" class="hidden">線の太さ <span>cm</span><input id="propThickness" type="number" min="5" max="100" step="5"></label>
         <label>カラー<div class="swatches" id="swatches"><button style="--c:#f1e7d4" data-color="#f1e7d4"></button><button style="--c:#e2ebdf" data-color="#e2ebdf"></button><button style="--c:#dce9ee" data-color="#dce9ee"></button><button style="--c:#eee1dc" data-color="#eee1dc"></button><button style="--c:#e8e4ef" data-color="#e8e4ef"></button></div></label>
+        <button id="addVertexBtn" class="vertex-action hidden">＋ 頂点を追加</button>
         <div class="property-actions"><button id="duplicateBtn">複製</button><button id="deleteBtn" class="danger">削除</button></div>
       </div>
-      <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m²</strong></div></div>
+      <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m² / 0.0 畳</strong></div></div>
     </aside>
   </main>
   <div id="toast" class="toast" role="status"></div>
