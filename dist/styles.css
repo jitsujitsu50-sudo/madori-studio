@@ -33,3 +33,46 @@
 .builder3d-help{top:78px;bottom:auto}
 #cutawayBtn.active{border-color:#efb24e;background:#d9902d;color:#1f1b15}
 @media (max-width:900px){.builder3d-status{right:12px;top:64px;padding:6px 9px}.builder3d-status small{display:none}.builder3d-selection{top:auto;bottom:74px}.builder3d-tools select{padding:7px 4px}}
+
+/* v27 game-style builder */
+.builder3d-modal .builder3d-tools{display:none}
+.b3-hotbar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:4px;padding:6px;border:2px solid #ffffff2e;border-radius:14px;background:#141b19e6;box-shadow:0 12px 34px #0007;max-width:calc(100% - 24px);overflow-x:auto;scrollbar-width:none}
+.b3-hotbar button{position:relative;flex:0 0 auto;width:62px;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:2px solid #ffffff1f;border-radius:10px;background:linear-gradient(#ffffff14,#ffffff05);color:#e9eeeb;cursor:pointer;transition:transform .12s,border-color .12s,background .12s}
+.b3-hotbar button:hover{transform:translateY(-2px);border-color:#ffffff55}
+.b3-hotbar button.active{border-color:#f2b550;background:linear-gradient(#f2b55040,#f2b55014);color:#fff;box-shadow:0 0 0 2px #f2b55055,0 6px 16px #f2b55033}
+.b3-hotbar svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.b3-hotbar span{font-size:10px;font-weight:700;letter-spacing:.04em}
+.b3-hotbar kbd{position:absolute;left:5px;top:3px;font:700 9px/1 ui-monospace,monospace;color:#ffffff80}
+.b3-palette{position:absolute;left:50%;bottom:98px;transform:translateX(-50%);display:flex;gap:6px;padding:7px;border:1px solid #ffffff2b;border-radius:12px;background:#141b19e0;box-shadow:0 10px 26px #0006;max-width:calc(100% - 24px);overflow-x:auto;scrollbar-width:none}
+.b3-palette.hidden{display:none}
+.b3-palette button{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:58px;padding:5px 7px;border:2px solid transparent;border-radius:9px;background:#ffffff0f;color:#dfe6e2;font-size:10px;cursor:pointer;white-space:nowrap}
+.b3-palette button.active{border-color:#f2b550;color:#fff;background:#f2b55026}
+.b3-palette img,.b3-palette i{display:block;width:38px;height:38px;border-radius:7px;box-shadow:inset 0 0 0 1px #0003}
+.b3-palette button:not(:has(img)):not(:has(i)){justify-content:center;min-height:30px;padding:8px 11px;font-size:11px}
+.b3-side{position:absolute;right:16px;bottom:16px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.b3-side-row{display:flex;gap:4px}
+.b3-side button,.b3-height{border:1px solid #ffffff35;border-radius:8px;background:#141b19d9;color:#fff;padding:7px 9px;font-size:11px;cursor:pointer;white-space:nowrap}
+.b3-side button.active{border-color:#efb24e;background:#d9902d;color:#1f1b15}
+.b3-height{display:flex;align-items:center;gap:6px;cursor:default}
+.b3-height input{width:86px;accent-color:#e6a442}.b3-height output{color:#f1c77f;width:38px}
+.builder3d-selection{top:76px}
+.b3-walk-hud{display:none;position:absolute;left:50%;top:18px;transform:translateX(-50%);align-items:center;gap:12px;padding:8px 10px 8px 14px;border-radius:10px;background:#141b19e0;color:#fff;font-size:12px;white-space:nowrap}
+.b3-walk-hud span{color:#cbd4cf;font-size:11px}
+.b3-walk-hud button{border:1px solid #f2b550;border-radius:7px;background:#d9902d;color:#1f1b15;padding:7px 10px;font-weight:700;cursor:pointer}
+.builder3d-modal.walking .b3-walk-hud{display:flex}
+.builder3d-modal.walking .b3-side,.builder3d-modal.walking .b3-palette,.builder3d-modal.walking .builder3d-help,.builder3d-modal.walking .builder3d-status,.builder3d-modal.walking .builder3d-topbar{display:none}
+.builder3d-modal.walking canvas{cursor:grab}
+.b3-joystick{position:absolute;width:100px;height:100px;border-radius:50%;border:2px solid #ffffff66;background:#0004;pointer-events:none}
+.b3-joystick.hidden{display:none}
+.b3-joystick i{position:absolute;left:30px;top:30px;width:40px;height:40px;border-radius:50%;background:#ffffffcc}
+.builder3d-modal canvas[data-tool="furniture"],.builder3d-modal canvas[data-tool="paint"]{cursor:copy}
+@media (max-width:900px){
+  .b3-hotbar{bottom:8px;left:8px;right:8px;transform:none;max-width:none}
+  .b3-hotbar button{width:54px;height:54px}
+  .b3-palette{bottom:80px;left:8px;right:8px;transform:none;max-width:none}
+  .b3-side{top:58px;right:8px;bottom:auto}
+  .b3-side .b3-height,.b3-side #roomsTo3dBtn{display:none}
+  .builder3d-status{top:100px}
+  .b3-walk-hud{top:8px;max-width:calc(100% - 16px)}.b3-walk-hud span{display:none}
+  .builder3d-selection{top:auto;bottom:146px}
+}
