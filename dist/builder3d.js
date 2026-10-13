@@ -11,6 +11,22 @@ const B3 = {
 };
 let b3renderer = null, b3hemi, b3scene, b3camera, b3root, b3ghost, b3sun, b3ray, b3ghostKey = '';
 const B3_THICK = 0.12, FLOOR_T = 0.06;
+// Door / window variants. Stored as 2D opening items: type (2D symbol) + optional style (3D look).
+const OPENINGS = {
+  door: { type: 'door', name: '片開き戸', w: 0.8 },
+  double: { type: 'door', style: 'double', name: '両開き戸', w: 1.6 },
+  entrance: { type: 'door', style: 'entrance', name: '玄関ドア', w: 0.9 },
+  glassdoor: { type: 'door', style: 'glass', name: 'ガラス戸', w: 0.8 },
+  sliding: { type: 'sliding-door', style: 'single', name: '片引き戸', w: 0.8 },
+  slidingDouble: { type: 'sliding-door', style: 'double', name: '引き違い戸', w: 1.6 },
+  folding: { type: 'sliding-door', style: 'folding', name: '折れ戸', w: 0.8 },
+  window: { type: 'window', name: '引違い窓', w: 1.6 },
+  fixed: { type: 'fixed-window', name: 'FIX窓', w: 1.2 },
+  small: { type: 'window', style: 'small', name: '小窓', w: 0.6 },
+  hakidashi: { type: 'sliding-door', style: 'hakidashi', name: '掃き出し窓', w: 1.8 },
+};
+const DOOR_KEYS = ['door', 'double', 'entrance', 'glassdoor', 'sliding', 'slidingDouble', 'folding'], WINDOW_KEYS = ['window', 'fixed', 'small', 'hakidashi'];
+const isDeck = t => t.mat === 'deck';
 
 const TOOLS = [
   ['add', '床', 'M4 15l8-4 8 4-8 4zM4 11l8-4 8 4'],
@@ -24,8 +40,8 @@ const TOOLS = [
   ['walk', '歩く', 'M13 4a1.5 1.5 0 100 .1M10 21l2-6 3 3v3M12 15l-1-5 4 1 2 3M11 10l-3 2-1 3'],
 ];
 const HINTS = {
-  add: 'ドラッグで床を塗る（同じ場所なら床材を張り替え）', remove: 'ドラッグで床を消す', wall: '辺をクリック／なぞって壁を追加・削除',
-  door: '壁の辺をクリックしてドアを設置', window: '壁の辺をクリックして窓を設置', furniture: 'クリックで家具を置く（Rで回転）',
+  add: 'ドラッグで床を塗る（バルコニー床は手すり付き。同じ場所なら張り替え）', remove: 'ドラッグで床を消す', wall: '辺をクリック／なぞって壁を追加・削除',
+  door: '壁の辺をクリックして扉を設置（7種類）', window: '壁の辺をクリックして窓を設置（掃き出し窓はバルコニーへの出入りに）', furniture: 'クリックで家具を置く（Rで回転）',
   paint: '壁をクリック／なぞって色を塗る', move: '家具や建具をドラッグで移動／空き地ドラッグで視点回転', walk: 'WASD・矢印で移動／ドラッグで見回す／Escで終了',
 };
 
@@ -51,13 +67,23 @@ function wallEligibleTiles(tiles) {
 function edgeKey(k, gx, gy, size = gridPx()) { return `${k}:${gx * size}:${gy * size}:${size}`; }
 function edgePoints(e, size = gridPx()) { const x = e.gx * size, y = e.gy * size; return e.k === 'h' ? [[x, y], [x + size, y]] : [[x, y], [x, y + size]]; }
 function autoEdges(tiles) {
-  const size = gridPx(), set = new Set(tiles.map(t => `${t.gx}:${t.gy}`)), elig = wallEligibleTiles(tiles), edges = new Map(), add = (k, gx, gy) => edges.set(edgeKey(k, gx, gy, size), { k, gx, gy });
-  tiles.forEach(t => {
+  const size = gridPx(), indoor = tiles.filter(t => !isDeck(t)), deck = tiles.filter(isDeck), edges = new Map(), add = (k, gx, gy, rail) => { const key = edgeKey(k, gx, gy, size); if (!edges.has(key)) edges.set(key, rail ? { k, gx, gy, rail: true } : { k, gx, gy }); };
+  const inSet = new Set(indoor.map(t => `${t.gx}:${t.gy}`)), deckSet = new Set(deck.map(t => `${t.gx}:${t.gy}`)), elig = wallEligibleTiles(indoor);
+  // walls: perimeter of indoor floor groups (a balcony next to the room is outside, so the wall stays)
+  indoor.forEach(t => {
     if (!elig.has(`${t.gx}:${t.gy}`)) return;
-    if (!set.has(`${t.gx}:${t.gy - 1}`)) add('h', t.gx, t.gy);
-    if (!set.has(`${t.gx}:${t.gy + 1}`)) add('h', t.gx, t.gy + 1);
-    if (!set.has(`${t.gx - 1}:${t.gy}`)) add('v', t.gx, t.gy);
-    if (!set.has(`${t.gx + 1}:${t.gy}`)) add('v', t.gx + 1, t.gy);
+    if (!inSet.has(`${t.gx}:${t.gy - 1}`)) add('h', t.gx, t.gy);
+    if (!inSet.has(`${t.gx}:${t.gy + 1}`)) add('h', t.gx, t.gy + 1);
+    if (!inSet.has(`${t.gx - 1}:${t.gy}`)) add('v', t.gx, t.gy);
+    if (!inSet.has(`${t.gx + 1}:${t.gy}`)) add('v', t.gx + 1, t.gy);
+  });
+  // railings: balcony edges facing open air
+  const open = (x, y) => !inSet.has(`${x}:${y}`) && !deckSet.has(`${x}:${y}`);
+  deck.forEach(t => {
+    if (open(t.gx, t.gy - 1)) add('h', t.gx, t.gy, true);
+    if (open(t.gx, t.gy + 1)) add('h', t.gx, t.gy + 1, true);
+    if (open(t.gx - 1, t.gy)) add('v', t.gx, t.gy, true);
+    if (open(t.gx + 1, t.gy)) add('v', t.gx + 1, t.gy, true);
   });
   items.filter(i => i.type === 'room' && Math.abs(i.rotation || 0) < 1).forEach(room => {
     const x0 = Math.floor(room.x / size), y0 = Math.floor(room.y / size), x1 = Math.ceil((room.x + room.w) / size), y1 = Math.ceil((room.y + room.h) / size), has = (x, y) => elig.has(`${x}:${y}`);
@@ -70,14 +96,14 @@ function visibleAutoEdges(tiles) { const hidden = new Set(hiddenEdges), all = au
 function edgeRuns(edges, byColor = true) {
   const groups = {};
   edges.forEach((e, key) => {
-    const line = e.k === 'h' ? e.gy : e.gx, pos = e.k === 'h' ? e.gx : e.gy, color = byColor ? (wallPaint[key] || '') : '', g = `${e.k}:${line}:${color}`;
-    (groups[g] || (groups[g] = { k: e.k, line, color, list: [] })).list.push(pos);
+    const rail = !!e.rail, line = e.k === 'h' ? e.gy : e.gx, pos = e.k === 'h' ? e.gx : e.gy, color = byColor && !rail ? (wallPaint[key] || '') : '', g = `${e.k}:${line}:${color}:${rail}`;
+    (groups[g] || (groups[g] = { k: e.k, line, color, rail, list: [] })).list.push(pos);
   });
   const runs = [];
   Object.values(groups).forEach(g => {
     g.list.sort((a, b) => a - b);
     let start = g.list[0], prev = start;
-    for (let n = 1; n <= g.list.length; n++) { const p = g.list[n]; if (p === prev + 1) { prev = p; continue; } runs.push({ k: g.k, line: g.line, color: g.color, from: start, to: prev + 1 }); start = prev = p; }
+    for (let n = 1; n <= g.list.length; n++) { const p = g.list[n]; if (p === prev + 1) { prev = p; continue; } runs.push({ k: g.k, line: g.line, color: g.color, rail: g.rail, from: start, to: prev + 1 }); start = prev = p; }
   });
   return runs;
 }
@@ -129,7 +155,7 @@ function paintWallAt(hit) {
     const w = items.find(i => i.id === d.itemId); if (!w || w.wallColor === color) return false;
     b3Checkpoint(); w.wallColor = color; return true;
   }
-  if (!d.autoWall) return false;
+  if (!d.autoWall || d.autoWall.rail) return false;
   const s = cellM(), r = d.autoWall, p = hit.point, pos = r.k === 'h' ? Math.floor(p.x / s) : Math.floor(p.z / s), { visible } = visibleAutoEdges(normalizedTiles()), size = gridPx();
   const keyAt = q => r.k === 'h' ? edgeKey('h', q, r.line, size) : edgeKey('v', r.line, q, size);
   if (!visible.has(keyAt(pos))) return false;
@@ -170,8 +196,9 @@ function addMesh(geo, material, x, y, z, ry = 0, data) { const m = new THREE.Mes
 // Opening geometry in world space: wall-line centre, direction, vertical range.
 function openingSpec(i) {
   const a = (i.rotation || 0) * Math.PI / 180, lift = i.type === 'door' ? i.h / 2 / PX : 0, [cx, cz] = itemCenter(i), H = fullH();
-  const door = i.type === 'door' || i.type === 'sliding-door';
-  return { item: i, x: cx - Math.sin(a) * lift, z: cz + Math.cos(a) * lift, ux: Math.cos(a), uz: Math.sin(a), w: i.w / PX, y0: door ? 0 : (i.type === 'fixed-window' ? 0.7 : 0.9), y1: door ? Math.min(2.0, H - 0.05) : Math.max(1.2, Math.min(2.0, H - 0.25)), door };
+  const door = i.type === 'door' || i.type === 'sliding-door', small = i.style === 'small';
+  const y0 = door ? 0 : small ? 1.2 : i.type === 'fixed-window' ? 0.7 : 0.9, y1 = door ? Math.min(2.0, H - 0.05) : small ? Math.max(1.5, Math.min(1.75, H - 0.25)) : Math.max(1.2, Math.min(2.0, H - 0.25));
+  return { item: i, x: cx - Math.sin(a) * lift, z: cz + Math.cos(a) * lift, ux: Math.cos(a), uz: Math.sin(a), w: i.w / PX, y0, y1, door };
 }
 function holesFor(ax, az, ux, uz, len, specs) {
   const out = [];
@@ -259,6 +286,12 @@ function b3Rebuild() {
   edgeRuns(visible).forEach(r => {
     const a = r.k === 'h' ? [r.from * s, r.line * s] : [r.line * s, r.from * s], b = r.k === 'h' ? [r.to * s, r.line * s] : [r.line * s, r.to * s];
     const ux = r.k === 'h' ? 1 : 0, uz = r.k === 'h' ? 0 : 1, len = (r.to - r.from) * s;
+    if (r.rail) {   // balcony handrail
+      const g = B3A.railing(len); g.position.set((a[0] + b[0]) / 2, FLOOR_T, (a[1] + b[1]) / 2); g.rotation.y = r.k === 'h' ? 0 : -Math.PI / 2;
+      g.traverse(o => { o.userData.autoWall = r; }); b3root.add(g);
+      B3.colliders.push({ ax: a[0], az: a[1], bx: b[0], bz: b[1], r: 0.04 });
+      return;
+    }
     buildWall(a[0], a[1], b[0], b[1], H, B3A.mat(r.color || '#f2efe9', { roughness: 0.88 }), holesFor(a[0], a[1], ux, uz, len, specs), { autoWall: r });
   });
   items.forEach(i => {
@@ -272,7 +305,7 @@ function b3Rebuild() {
     } else if (isOpening(i)) {
       const o = openingSpec(i), top = Math.min(o.y1, H);
       let model;
-      if (o.door || o.y0 < H - 0.05) model = B3A.opening({ type: i.type, w: i.w, bottom: o.y0, top }, B3_THICK, top);
+      if (o.door || o.y0 < H - 0.05) model = B3A.opening({ type: i.type, style: i.style, w: i.w, bottom: o.y0, top }, B3_THICK, top);
       else { model = new THREE.Group(); const sill = new THREE.Mesh(new THREE.BoxGeometry(o.w, 0.03, B3_THICK + 0.05), B3A.mat('#9cc0d2', { roughness: 0.2 })); sill.position.y = H + 0.015; model.add(sill); } // walls lowered below the window: show its position only
       model.position.set(o.x, 0, o.z); model.rotation.y = Math.atan2(-o.uz, o.ux); model.userData.itemId = i.id; b3Decorate(model, i.id, sel); b3root.add(model);
     } else if (i.type === 'furniture') {
@@ -392,9 +425,9 @@ function b3UpdateGhost() {
       build = () => ghostify(new THREE.Mesh(new THREE.BoxGeometry(s, H, B3_THICK + 0.02), B3A.mat('#f0a733')), h.edgeAction === 'remove' ? '#e0533d' : '#f0a733');
       place = g => { g.position.set(mid[0], H / 2, mid[1]); g.rotation.y = ry; };
     } else {
-      const type = tool === 'door' ? B3.doorType : B3.winType, w = (tool === 'door' ? 0.8 : type === 'window' ? 1.6 : 1.2) * PX, door = tool === 'door', top = Math.min(door ? 2.0 : 2.0, wallH());
-      key = type + top;
-      build = () => ghostify(B3A.opening({ type, w, bottom: door ? 0 : Math.min(0.9, top - 0.3), top }, B3_THICK, top));
+      const okey = tool === 'door' ? B3.doorType : B3.winType, o = openingDims(okey), door = o.type === 'door' || o.type === 'sliding-door', top = Math.min(o.style === 'small' ? 1.75 : 2.0, wallH());
+      key = okey + top;
+      build = () => ghostify(B3A.opening({ type: o.type, style: o.style, w: o.w, bottom: door ? 0 : Math.min(o.style === 'small' ? 1.2 : 0.9, top - 0.3), top }, B3_THICK, top));
       place = g => { g.position.set(mid[0], 0, mid[1]); g.rotation.y = ry; };
     }
   } else if (tool === 'furniture' && h.furn) {
@@ -426,14 +459,18 @@ function b3PaintTo(cell) {
   st.last = cell; if (changed) { st.changed = true; B3A.sound(B3.tool === 'remove' ? 'remove' : 'place'); b3MarkDirty(); }
 }
 function b3EndStroke() { const st = B3.stroke; B3.stroke = null; if (!st) return; if (st.kind === 'wall') mergeWalls3d(); if (st.changed) { render(); scheduleSave(); } }
+function openingDims(key) {
+  const o = OPENINGS[key], w = o.w * PX, h = o.type === 'door' ? (o.style === 'double' ? w / 2 : w) : o.type === 'sliding-door' ? 0.12 * PX : 0.1 * PX;
+  return { ...o, w, h };
+}
 function b3PlaceOpening(e) {
-  const size = gridPx(), [a, b] = edgePoints(e, size), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, set = new Set(floorTiles.filter(t => t.size === size).map(t => `${Math.round(t.x / size)}:${Math.round(t.y / size)}`));
-  const door = B3.tool === 'door', type = door ? B3.doorType : B3.winType, name = { door: '片開き戸', 'sliding-door': '片引き戸', window: '引違い窓', 'fixed-window': 'FIX窓' }[type];
-  const w = (door ? 0.8 : type === 'window' ? 1.6 : 1.2) * PX, h = type === 'door' ? 0.8 * PX : type === 'sliding-door' ? 0.12 * PX : 0.1 * PX; let rot = e.k === 'h' ? 0 : 90;
-  if (type === 'door') { if (e.k === 'h') rot = set.has(`${e.gx}:${e.gy}`) ? 180 : 0; else rot = set.has(`${e.gx}:${e.gy}`) ? 90 : 270; }
-  const r = rot * Math.PI / 180, lift = type === 'door' ? h / 2 : 0, cx = mx + Math.sin(r) * lift, cy = my - Math.cos(r) * lift;
-  checkpoint(); const item = { id: uid(), type, name, x: cx - w / 2, y: cy - h / 2, w, h, rotation: rot, color: '#e7e5dd' }; items.push(item);
-  B3.pop.set(item.id, performance.now()); render(); scheduleSave(); B3A.sound('place'); toast(`${name}を設置しました`);
+  const size = gridPx(), [a, b] = edgePoints(e, size), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+  const indoor = new Set(floorTiles.filter(t => t.size === size && !isDeck(t)).map(t => `${Math.round(t.x / size)}:${Math.round(t.y / size)}`));
+  const key = B3.tool === 'door' ? B3.doorType : B3.winType, o = openingDims(key); let rot = e.k === 'h' ? 0 : 90;
+  if (o.type === 'door') { if (e.k === 'h') rot = indoor.has(`${e.gx}:${e.gy}`) ? 180 : 0; else rot = indoor.has(`${e.gx}:${e.gy}`) ? 90 : 270; }  // swing into the room
+  const r = rot * Math.PI / 180, lift = o.type === 'door' ? o.h / 2 : 0, cx = mx + Math.sin(r) * lift, cy = my - Math.cos(r) * lift;
+  checkpoint(); const item = { id: uid(), type: o.type, name: o.name, x: cx - o.w / 2, y: cy - o.h / 2, w: o.w, h: o.h, rotation: rot, color: '#e7e5dd' }; if (o.style) item.style = o.style; items.push(item);
+  B3.pop.set(item.id, performance.now()); render(); scheduleSave(); B3A.sound('place'); toast(`${o.name}を設置しました`);
 }
 function b3PlaceFurniture(e) {
   const f = furniturePlacement(e); if (!f) return;
@@ -465,8 +502,8 @@ function b3RenderPalette() {
   if (t === 'add') html = Object.entries(B3A.FLOORS).map(([k, f]) => `<button data-mat="${k}" class="${k === B3.floorMat ? 'active' : ''}"><img alt="" src="${B3A.swatch(k)}"><span>${f.name}</span></button>`).join('');
   else if (t === 'paint') html = B3A.WALL_COLORS.map(([c, n]) => `<button data-wcolor="${c}" class="${c === B3.wallColor ? 'active' : ''}"><i style="background:${c}"></i><span>${n}</span></button>`).join('');
   else if (t === 'furniture') html = B3A.CATALOG.map((c, n) => `<button data-furn="${n}" class="${n === B3.furn ? 'active' : ''}"><span>${c.name}</span></button>`).join('') + `<button data-ghost-rot><span>↻ 回転 (R)</span></button>`;
-  else if (t === 'door') html = [['door', '片開き戸'], ['sliding-door', '引き戸']].map(([k, n]) => `<button data-door="${k}" class="${k === B3.doorType ? 'active' : ''}"><span>${n}</span></button>`).join('');
-  else if (t === 'window') html = [['window', '引違い窓'], ['fixed-window', 'FIX窓']].map(([k, n]) => `<button data-win="${k}" class="${k === B3.winType ? 'active' : ''}"><span>${n}</span></button>`).join('');
+  else if (t === 'door') html = DOOR_KEYS.map(k => `<button data-door="${k}" class="${k === B3.doorType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
+  else if (t === 'window') html = WINDOW_KEYS.map(k => `<button data-win="${k}" class="${k === B3.winType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
   p.innerHTML = html; p.classList.toggle('hidden', !html);
   p.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { B3.floorMat = b.dataset.mat; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-wcolor]').forEach(b => b.onclick = () => { B3.wallColor = b.dataset.wcolor; b3ghostKey = ''; b3RenderPalette(); });

@@ -106,6 +106,15 @@ const B3A = (() => {
       for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? '255,255,255' : '60,60,60'},${0.03 + rnd() * 0.04})`; g.beginPath(); g.arc(rnd() * s, rnd() * s, 20 + rnd() * 90, 0, 7); g.fill(); }
       noise(g, s, 20000, 0.07, false);
     }, { repeatMeters: 3 }) },
+    deck: { name: 'バルコニー', color: '#a88f72', outdoor: true, tex: () => canvasTex('deck', 1024, (g, s) => {
+      const n = 8, h = s / n;
+      for (let r = 0; r < n; r++) {
+        g.fillStyle = shade('#9a7d60', (rnd() - 0.5) * 0.1); g.fillRect(0, r * h, s, h);
+        for (let l = 0; l < 10; l++) { g.strokeStyle = `rgba(50,30,15,${0.06 + rnd() * 0.08})`; g.lineWidth = 0.8; g.beginPath(); const y = r * h + rnd() * h; g.moveTo(0, y); g.lineTo(s, y + (rnd() - 0.5) * 4); g.stroke(); }
+        g.fillStyle = 'rgba(25,18,12,.85)'; g.fillRect(0, r * h + h - 7, s, 7);   // gaps between deck boards
+        for (let k = 0; k < 3; k++) { g.fillStyle = 'rgba(40,40,40,.5)'; const x = (k + 0.5) * s / 3; g.fillRect(x, r * h + h / 2 - 2, 4, 4); }
+      }
+    }, { repeatMeters: 1.2 }) },
   };
   const WALL_COLORS = [
     ['#f3f0ea', 'ホワイト'], ['#ddd5c8', 'グレージュ'], ['#c3cdb9', 'セージ'], ['#b5c3cc', 'ブルーグレー'],
@@ -213,9 +222,15 @@ const B3A = (() => {
     { name: 'ソファ', w: 1.8, d: 0.9 }, { name: 'ダイニングテーブル', w: 1.4, d: 0.8 }, { name: '椅子', w: 0.45, d: 0.5 },
     { name: 'シングルベッド', w: 0.97, d: 1.95 }, { name: 'ダブルベッド', w: 1.4, d: 1.95 }, { name: '収納', w: 0.9, d: 0.45 },
     { name: 'デスク', w: 1.2, d: 0.6 }, { name: 'テレビ台', w: 1.6, d: 0.42 }, { name: 'ラグ', w: 2.0, d: 1.4 },
-    { name: '観葉植物', w: 0.5, d: 0.5 }, { name: 'キッチン', w: 2.4, d: 0.65 },
+    { name: '観葉植物', w: 0.5, d: 0.5 }, { name: 'キッチン', w: 2.4, d: 0.65 }, { name: '冷蔵庫', w: 0.65, d: 0.7 },
+    { name: '浴槽', w: 1.6, d: 0.8 }, { name: 'トイレ', w: 0.45, d: 0.75 }, { name: '洗面台', w: 0.75, d: 0.55 }, { name: '洗濯機', w: 0.6, d: 0.6 },
   ];
   function kind(name = '') {
+    if (/浴槽|バスタブ|風呂/.test(name)) return 'bath';
+    if (/トイレ|便器/.test(name)) return 'toilet';
+    if (/洗面/.test(name)) return 'basin';
+    if (/洗濯/.test(name)) return 'washer';
+    if (/冷蔵庫/.test(name)) return 'fridge';
     if (/ベッド/.test(name)) return 'bed';
     if (/ソファ/.test(name)) return 'sofa';
     if (/キッチン/.test(name)) return 'kitchen';
@@ -323,6 +338,57 @@ const B3A = (() => {
         for (let i = 0; i < doors; i++) part(g, box(w / doors - 0.012, 0.7, 0.012), mat(shade(tint || '#f0eee9', -0.03)), -w / 2 + (w / doors) * (i + 0.5), 0.42, d / 2 + 0.006);
         break;
       }
+      case 'bath': {
+        const shell = mat(tint || '#f4f6f6', { roughness: 0.25 }), h = 0.55, rim = 0.09;
+        part(g, box(w, h - 0.12, d), shell, 0, (h - 0.12) / 2, 0);
+        part(g, roundedBox(w, 0.12, rim, 0.03), shell, 0, h - 0.06, -d / 2 + rim / 2);
+        part(g, roundedBox(w, 0.12, rim, 0.03), shell, 0, h - 0.06, d / 2 - rim / 2);
+        part(g, roundedBox(rim, 0.12, d, 0.03), shell, -w / 2 + rim / 2, h - 0.06, 0);
+        part(g, roundedBox(rim * 2.2, 0.12, d, 0.03), shell, w / 2 - rim * 1.1, h - 0.06, 0);
+        const water = part(g, box(w - rim * 3.2, 0.01, d - rim * 2), mat('#8fc3d4', { roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.6 }), -rim * 0.6, h - 0.1, 0);
+        water.castShadow = false;
+        part(g, box(w - rim * 3.2, 0.01, d - rim * 2), mat('#e9eef0', { roughness: 0.3 }), -rim * 0.6, h - 0.115, 0).castShadow = false;
+        const chrome = mat('#d4d8da', { metalness: 0.9, roughness: 0.15 });
+        part(g, cyl(0.018, 0.018, 0.14, 12), chrome, w / 2 - rim * 1.1, h + 0.07, -d / 4);
+        part(g, box(0.12, 0.02, 0.03), chrome, w / 2 - rim * 1.1 - 0.05, h + 0.13, -d / 4);
+        break;
+      }
+      case 'toilet': {
+        const cer = mat('#f7f7f5', { roughness: 0.2 });
+        part(g, box(Math.min(w, 0.4), 0.38, 0.18), cer, 0, 0.6, -d / 2 + 0.09);           // tank
+        part(g, box(Math.min(w, 0.4) + 0.02, 0.03, 0.2), cer, 0, 0.805, -d / 2 + 0.1);
+        const bowl = part(g, cyl(0.19, 0.14, 0.4, 24), cer, 0, 0.2, d / 2 - 0.3); bowl.scale.set(1, 1, 1.35);
+        const seat = part(g, cyl(0.2, 0.2, 0.03, 24), mat('#efefec', { roughness: 0.3 }), 0, 0.415, d / 2 - 0.3); seat.scale.set(1, 1, 1.3);
+        part(g, box(0.06, 0.012, 0.02), mat('#cfd3d5', { metalness: 0.8, roughness: 0.2 }), -0.1, 0.78, -d / 2 + 0.185);
+        break;
+      }
+      case 'basin': {
+        const body = mat(tint || '#e9e2d4', { roughness: 0.5 }), cer = mat('#f7f7f5', { roughness: 0.2 }), chrome = mat('#d4d8da', { metalness: 0.9, roughness: 0.15 });
+        part(g, box(w, 0.78, d), body, 0, 0.39, 0);
+        part(g, box(w + 0.02, 0.04, d + 0.02), cer, 0, 0.8, 0);
+        const sink = part(g, cyl(0.2, 0.15, 0.02, 28), mat('#dfe4e6', { roughness: 0.15 }), 0, 0.821, 0.02); sink.scale.set(Math.min(1.2, w * 1.6), 1, 0.9);
+        part(g, cyl(0.015, 0.015, 0.16, 12), chrome, 0, 0.9, -d / 2 + 0.08);
+        part(g, box(0.02, 0.02, 0.1), chrome, 0, 0.97, -d / 2 + 0.12);
+        part(g, box(w * 0.9, 0.7, 0.02), mat('#cfe0e6', { roughness: 0.02, metalness: 0.95 }), 0, 1.35, -d / 2 + 0.01);
+        part(g, box(w - 0.012, 0.6, 0.012), mat(shade(tint || '#e9e2d4', -0.03)), 0, 0.4, d / 2 + 0.006);
+        break;
+      }
+      case 'washer': {
+        const body = mat(tint || '#f3f3f1', { roughness: 0.35 });
+        part(g, roundedBox(w, 0.85, d, 0.02), body, 0, 0.425, 0);
+        const door = part(g, cyl(0.2, 0.2, 0.03, 32), mat('#2b3237', { roughness: 0.1, metalness: 0.3 }), 0, 0.45, d / 2 + 0.005); door.rotation.x = Math.PI / 2;
+        const ring = part(g, cyl(0.22, 0.22, 0.02, 32), mat('#c9cdcf', { metalness: 0.7, roughness: 0.3 }), 0, 0.45, d / 2 - 0.002); ring.rotation.x = Math.PI / 2;
+        part(g, box(w - 0.06, 0.06, 0.01), mat('#d9dcdd'), 0, 0.78, d / 2 + 0.002);
+        break;
+      }
+      case 'fridge': {
+        const body = mat(tint || '#e8eaeb', { roughness: 0.3, metalness: 0.2 }), handle = mat('#b9bdc0', { metalness: 0.8, roughness: 0.25 }), h = 1.8;
+        part(g, roundedBox(w, h, d, 0.025), body, 0, h / 2, 0);
+        part(g, box(w - 0.01, 0.01, 0.02), mat('#9da2a5'), 0, h * 0.62, d / 2);
+        part(g, box(0.025, 0.4, 0.03), handle, w / 2 - 0.07, h * 0.8, d / 2 + 0.02);
+        part(g, box(0.025, 0.3, 0.03), handle, w / 2 - 0.07, h * 0.45, d / 2 + 0.02);
+        break;
+      }
       default: {
         const h = 0.6;
         part(g, roundedBox(w, h, d, 0.03), mat(tint || '#cfc6b6', { roughness: 0.7 }), 0, h / 2, 0);
@@ -335,24 +401,72 @@ const B3A = (() => {
   const blocks = item => kind(item.name) !== 'rug';
 
   // ---------- openings (built in the wall's local frame: x along wall, z across) ----------
+  // spec: { type, style, w (plan px), bottom, top }. Built in the wall's local frame: x along wall, z across.
   function opening(item, wallThick, height) {
-    const g = new THREE.Group(), w = item.w / PX, t = wallThick + 0.04;
-    const frameM = mat('#f4f1ea', { roughness: 0.5 }), glass = mat('#b8d4e2', { roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.28, envMapIntensity: 1.5 });
+    const g = new THREE.Group(), w = item.w / PX, t = wallThick + 0.04, style = item.style || '';
+    const frameM = mat('#f4f1ea', { roughness: 0.5 }), alu = mat('#8d9295', { roughness: 0.35, metalness: 0.6 });
+    const glass = mat('#b8d4e2', { roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.28, envMapIntensity: 1.5 });
+    const chrome = mat('#9a9a96', { metalness: 0.8, roughness: 0.3 });
+    const pane = (pw, ph, x, y, z) => { const p = part(g, box(pw, ph, 0.01), glass, x, y, z); p.castShadow = false; p.renderOrder = 2; return p; };
+    const frame = (fm, h, jamb, y0 = 0) => {
+      part(g, box(jamb, h, t), fm, -w / 2 + jamb / 2, y0 + h / 2, 0);
+      part(g, box(jamb, h, t), fm, w / 2 - jamb / 2, y0 + h / 2, 0);
+      part(g, box(w, jamb, t), fm, 0, y0 + h - jamb / 2, 0);
+    };
     if (item.type === 'door' || item.type === 'sliding-door') {
-      const h = height, jamb = 0.05;
-      part(g, box(jamb, h, t), frameM, -w / 2 + jamb / 2, h / 2, 0);
-      part(g, box(jamb, h, t), frameM, w / 2 - jamb / 2, h / 2, 0);
-      part(g, box(w, jamb, t), frameM, 0, h - jamb / 2, 0);
-      const leafM = mat(item.type === 'door' ? '#a57c58' : '#c7a985', { roughness: 0.55 });
+      const h = height, jamb = 0.05, lh = h - jamb - 0.01, inner = w - 2 * jamb;
+      if (style === 'hakidashi') {            // 掃き出し窓: full-height aluminium sliding window
+        frame(alu, h, 0.045); part(g, box(w, 0.04, t), alu, 0, 0.02, 0);
+        const sw = inner / 2 + 0.02;
+        for (const [x, z] of [[-sw / 2 + 0.01, -0.02], [sw / 2 - 0.01, 0.02]]) {
+          part(g, box(sw, 0.04, 0.035), alu, x, h - 0.07, z); part(g, box(sw, 0.04, 0.035), alu, x, 0.06, z);
+          part(g, box(0.04, lh - 0.06, 0.035), alu, x - sw / 2 + 0.02, (lh) / 2 + 0.03, z); part(g, box(0.04, lh - 0.06, 0.035), alu, x + sw / 2 - 0.02, lh / 2 + 0.03, z);
+          pane(sw - 0.08, lh - 0.12, x, lh / 2 + 0.03, z);
+        }
+        return g;
+      }
+      const dark = style === 'entrance', fm = dark ? mat('#3a3d40', { roughness: 0.4, metalness: 0.3 }) : frameM;
+      frame(fm, h, jamb);
+      const leafColor = dark ? '#4a3d33' : item.type === 'door' ? '#a57c58' : '#c7a985', leafM = mat(leafColor, { roughness: 0.55 });
+      const handle = (x, z = 0.035) => { for (const s of [-1, 1]) part(g, box(0.12, 0.02, 0.02), chrome, x, h * 0.47, s * z); };
       if (item.type === 'door') {
-        const leaf = part(g, box(w - 2 * jamb, h - jamb - 0.01, 0.04), leafM, 0, (h - jamb) / 2, 0);
-        for (const y of [0.3, 0.7]) part(g, box(w - 2 * jamb - 0.16, (h - jamb) * 0.3, 0.005), mat(shade('#a57c58', -0.04)), 0, (h - jamb) * y, 0.022);
-        for (const s of [-1, 1]) part(g, box(0.12, 0.02, 0.02), mat('#9a9a96', { metalness: 0.8, roughness: 0.3 }), w / 2 - jamb - 0.1, h * 0.47, s * 0.035);
-        leaf.userData.leaf = true;
-      } else {
-        const pw = (w - 2 * jamb) / 2 + 0.02;
-        part(g, box(pw, h - jamb - 0.01, 0.035), leafM, -pw / 2 + 0.01, (h - jamb) / 2, -0.02);
-        part(g, box(pw, h - jamb - 0.01, 0.035), leafM, pw / 2 - 0.01, (h - jamb) / 2, 0.02);
+        if (style === 'double') {
+          const lw = inner / 2 - 0.004;
+          for (const sx of [-1, 1]) {
+            part(g, box(lw, lh, 0.04), leafM, sx * (lw / 2 + 0.002), lh / 2, 0);
+            part(g, box(lw - 0.14, lh * 0.32, 0.005), mat(shade(leafColor, -0.04)), sx * (lw / 2 + 0.002), lh * 0.72, 0.022);
+            part(g, box(lw - 0.14, lh * 0.32, 0.005), mat(shade(leafColor, -0.04)), sx * (lw / 2 + 0.002), lh * 0.3, 0.022);
+            handle(sx * 0.08);
+          }
+        } else if (style === 'glass') {
+          const fw = 0.09;
+          part(g, box(inner, fw, 0.04), leafM, 0, lh - fw / 2, 0); part(g, box(inner, fw * 1.6, 0.04), leafM, 0, fw * 0.8, 0);
+          part(g, box(fw, lh, 0.04), leafM, -inner / 2 + fw / 2, lh / 2, 0); part(g, box(fw, lh, 0.04), leafM, inner / 2 - fw / 2, lh / 2, 0);
+          pane(inner - 2 * fw, lh - fw * 2.6, 0, (lh - fw * 2.6) / 2 + fw * 1.6, 0);
+          handle(inner / 2 - 0.13);
+        } else {
+          part(g, box(inner, lh, 0.045), leafM, 0, lh / 2, 0);
+          if (dark) {                          // 玄関ドア: dark leaf, glass slit, long pull handle
+            pane(0.08, lh * 0.7, -inner / 2 + 0.16, lh * 0.5, 0.024); pane(0.08, lh * 0.7, -inner / 2 + 0.16, lh * 0.5, -0.024);
+            for (const s of [-1, 1]) part(g, box(0.025, 0.9, 0.03), mat('#c2c5c7', { metalness: 0.9, roughness: 0.2 }), inner / 2 - 0.12, lh * 0.5, s * 0.06);
+          } else {
+            for (const y of [0.3, 0.7]) part(g, box(inner - 0.16, lh * 0.3, 0.005), mat(shade(leafColor, -0.04)), 0, lh * y, 0.024);
+            handle(inner / 2 - 0.1);
+          }
+        }
+      } else {                                 // sliding family
+        if (style === 'folding') {             // 折れ戸: four narrow panels in a zig-zag
+          const n = 4, pw = inner / n;
+          for (let i = 0; i < n; i++) { const p = part(g, box(pw - 0.004, lh, 0.03), leafM, -inner / 2 + pw * (i + 0.5), lh / 2, (i % 2 ? 0.015 : -0.015)); p.rotation.y = (i % 2 ? -1 : 1) * 0.12; }
+        } else if (style === 'double') {       // 引き違い戸
+          const pw = inner / 2 + 0.02;
+          part(g, box(pw, lh, 0.035), leafM, -pw / 2 + 0.01, lh / 2, -0.02); part(g, box(pw, lh, 0.035), leafM, pw / 2 - 0.01, lh / 2, 0.02);
+          part(g, box(0.02, 0.14, 0.01), chrome, -0.06, h * 0.47, -0.04); part(g, box(0.02, 0.14, 0.01), chrome, 0.06, h * 0.47, 0.04);
+        } else {                               // 片引き戸: one panel, slightly open
+          part(g, box(inner, lh, 0.035), leafM, -inner * 0.15, lh / 2, 0.025);
+          part(g, box(0.02, 0.14, 0.01), chrome, -inner * 0.15 + inner / 2 - 0.07, h * 0.47, 0.045);
+        }
+        part(g, box(w, 0.02, t), mat('#bdb4a6'), 0, 0.005, 0);
       }
     } else {
       const y0 = item.bottom, y1 = item.top, h = y1 - y0, fr = 0.045;
@@ -361,13 +475,23 @@ const B3A = (() => {
       part(g, box(fr, h, t), frameM, -w / 2 + fr / 2, y0 + h / 2, 0);
       part(g, box(fr, h, t), frameM, w / 2 - fr / 2, y0 + h / 2, 0);
       part(g, box(w + 0.1, 0.025, t + 0.06), frameM, 0, y0 - 0.0125, 0);
-      if (item.type === 'window') {
+      if (item.type === 'window' && style !== 'small') {
         part(g, box(fr * 0.8, h, 0.04), frameM, -0.015, y0 + h / 2, -0.02);
         part(g, box(fr * 0.8, h, 0.04), frameM, 0.015, y0 + h / 2, 0.02);
       }
-      const gl = part(g, box(w - 2 * fr, h - 2 * fr, 0.01), glass, 0, y0 + h / 2, 0);
-      gl.castShadow = false; gl.renderOrder = 2;
+      pane(w - 2 * fr, h - 2 * fr, 0, y0 + h / 2, 0);
     }
+    return g;
+  }
+  // Balcony railing along local x (length len), aluminium posts + rails + frosted glass.
+  function railing(len, height = 1.1) {
+    const g = new THREE.Group(), alu = mat('#9aa0a3', { roughness: 0.35, metalness: 0.65 });
+    const glassP = mat('#d6e4ea', { roughness: 0.3, metalness: 0.05, transparent: true, opacity: 0.45 });
+    const n = Math.max(1, Math.ceil(len / 1.0));
+    for (let i = 0; i <= n; i++) part(g, box(0.045, height, 0.045), alu, -len / 2 + (len * i) / n, height / 2, 0);
+    part(g, box(len + 0.045, 0.05, 0.07), alu, 0, height, 0);
+    part(g, box(len, 0.03, 0.035), alu, 0, 0.12, 0);
+    const p = part(g, box(len - 0.05, height - 0.25, 0.012), glassP, 0, 0.12 + (height - 0.25) / 2 + 0.02, 0); p.castShadow = false; p.renderOrder = 2;
     return g;
   }
 
@@ -387,5 +511,5 @@ const B3A = (() => {
   }
   function setMuted(v) { muted = v; try { localStorage.setItem('madori-sound', v ? 'off' : 'on'); } catch {} }
 
-  return { FLOORS, WALL_COLORS, CATALOG, floorMaterial, swatch, skyTexture, environment, lawnMaterial, siteMaterial, furniture, opening, kind, blocks, mat, roundedBox, sound, setMuted, isMuted: () => muted };
+  return { FLOORS, WALL_COLORS, CATALOG, floorMaterial, swatch, skyTexture, environment, lawnMaterial, siteMaterial, furniture, opening, railing, kind, blocks, mat, roundedBox, sound, setMuted, isMuted: () => muted };
 })();

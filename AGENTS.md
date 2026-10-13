@@ -18,7 +18,7 @@
 
 ## 構成
 - 静的サイト。ビルド不要。公開対象は `dist/` のみ。
-- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v27）。
+- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v28）。
 - `dist/app.js` — 2D間取り編集。`items`（部屋・壁・建具・家具）と `floorTiles` を管理。
 - `dist/builder3d.js` — 3Dルームビルダー（three.js / WebGL）。編集ツール・ホットバー・ゴースト表示・ウォークモード。
 - `dist/b3assets.js` — 3D素材（手続き生成テクスチャ、環境光、家具/建具モデル、効果音）。`builder3d.js` より先に読み込む。
@@ -33,10 +33,10 @@
 - `floorTiles` は 2D/3D 共有。3D 床はグリッド座標 `gx = round(x/size)` に正規化。
 - 自動壁: 4方向連結で4マス以上の床群の外周 + 部屋(rotation≈0)の間仕切り。3Dで消した自動壁は `hiddenEdges`（キー `h|v:x:y:size`、plan px）。
 - 3Dで追加した壁は 2D の `type:'wall'` アイテム（`from3d:true`、直線上で自動結合）。壁色は `wallColor`。
-- 床マスの床材は `floorTiles[].mat`（oak/walnut/whiteoak/tile/marble/tatami/carpet/mortar）。`mat` なしの古いデータは `color` で着色した木目で表示。2Dで色を塗り直すと `mat` は消える。
+- 床マスの床材は `floorTiles[].mat`（oak/walnut/whiteoak/tile/marble/tatami/carpet/mortar/deck）。`deck` はバルコニー床：屋外扱いで、室内床との境は壁、外気側の辺は手すり（自動壁の `rail:true`）になる。`mat` なしの古いデータは `color` で着色した木目で表示。2Dで色を塗り直すと `mat` は消える。
 - 自動壁の壁色は `wallPaint`（キー = hiddenEdges と同じ辺キー → 色）。
 - 家具の3D形状は名前で決まる（`B3A.kind`: ベッド/ソファ/キッチン/テレビ/テーブル/デスク/椅子/植物/ラグ/収納）。
-- ドア・窓は 2D の opening アイテム（door は item の下辺が壁線）。
+- ドア・窓は 2D の opening アイテム（door は item の下辺が壁線）。3D の見た目の種類は追加フィールド `style`：door=両開き`double`/玄関`entrance`/ガラス`glass`、sliding-door=片引き`single`/引き違い`double`/折れ戸`folding`/掃き出し窓`hakidashi`、window=小窓`small`。一覧は `builder3d.js` の `OPENINGS`。
 
 ## 変更後の確認（必須）
 1. `node --check dist/app.js && node --check dist/b3assets.js && node --check dist/builder3d.js`
@@ -46,6 +46,7 @@
 ## 履歴メモ
 - v25: Sites 公開済み（canvas 2D のアイソメ表示）
 - v26: three.js 化、床ドラッグ塗り、3D壁編集、ドア/窓、家具移動、カメラ回転/ズーム、タッチ対応
+- v28: バルコニー（デッキ床＋手すり）、扉7種・窓4種（掃き出し窓で出入り可）、浴槽・トイレ・洗面台・洗濯機・冷蔵庫
 - v27: ゲーム風UI（ホットバー1〜9キー、ゴースト表示、ポップ演出、効果音）、床材テクスチャ、壁塗り、幅木、建具部分の壁くり抜き、詳細な家具モデル、一人称ウォークモード（衝突判定・タッチスティック）
 
 ## 既知の課題
