@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
   <header class="topbar">
@@ -42,8 +42,10 @@
       <section>
         <div class="section-title"><span>建具・家具</span></div>
         <div class="tool-grid compact">
-          <button data-add="door" data-name="ドア"><span class="mini-symbol">⌒</span>ドア</button>
-          <button data-add="window" data-name="窓"><span class="mini-symbol">═</span>窓</button>
+          <button data-add="door" data-name="片開き戸"><span class="mini-symbol">⌒</span>片開き戸</button>
+          <button data-add="sliding-door" data-name="片引き戸"><span class="mini-symbol">⇆</span>片引き戸</button>
+          <button data-add="window" data-name="引違い窓"><span class="mini-symbol">═</span>引違い窓</button>
+          <button data-add="fixed-window" data-name="FIX窓"><span class="mini-symbol">▥</span>FIX窓</button>
           <button data-add="furniture" data-name="ソファ"><span class="mini-symbol">▰</span>ソファ</button>
           <button data-add="furniture" data-name="テーブル"><span class="mini-symbol">▭</span>テーブル</button>
           <button data-add="furniture" data-name="ベッド"><span class="mini-symbol">▣</span>ベッド</button>
@@ -57,6 +59,7 @@
           <button data-add="pillar" data-name="柱" data-w="32" data-h="32"><span class="mini-symbol pillar-symbol"></span>柱</button>
         </div>
       </section>
+      <section class="drawing-legend"><div class="section-title"><span>図面記号の凡例</span></div><p><i class="legend-wall"></i>外壁（太線）</p><p><i class="legend-door"></i>片開き戸・開閉弧</p><p><i class="legend-slide"></i>引き戸</p><p><i class="legend-window"></i>窓・ガラス</p><small>※ 建築確認申請用の設計図ではありません。</small></section>
       <section class="tip"><span>⌁</span><p><strong>ヒント</strong>部屋を選んで「頂点を追加」。緑の点をドラッグするとL字などの形を作れます。</p></section>
     </aside>
 
@@ -75,6 +78,7 @@
         <div class="ruler ruler-x"></div><div class="ruler ruler-y"></div>
         <div id="floorCanvas" class="floor-canvas" aria-label="間取り編集キャンバス">
           <img id="planUnderlay" class="plan-underlay hidden" alt="取り込んだ間取り図">
+          <div class="north-mark" aria-label="方位 北"><b>N</b><span>↑</span></div>
           <div class="empty-state" id="emptyState"><span>＋</span><strong>部屋を追加して始めましょう</strong><small>左のパレットから部屋を選択してください</small></div>
         </div>
       </div>
@@ -135,6 +139,6 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>
