@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=22">
+  <link rel="stylesheet" href="styles.css?v=23">
 </head>
 <body>
   <header class="topbar">
@@ -16,6 +16,7 @@
       <button class="ghost" id="saveBtn">保存</button>
       <button class="ghost" id="importBtn">間取り画像を読込</button>
       <input id="planImageInput" type="file" accept="image/*" hidden>
+      <button class="builder-launch" id="builder3dBtn">3Dでつくる</button>
       <button class="walkthrough" id="view3dBtn">室内を見る</button>
       <button class="primary" id="exportBtn">PNGを書き出す</button>
     </div>
@@ -109,6 +110,17 @@
     <div class="walk-hud"><strong>室内プレビュー</strong><span>WASD / 矢印キーで移動・方向転換</span><button id="closeWalkBtn">編集に戻る</button></div>
     <div class="walk-crosshair">＋</div>
   </div>
+  <div id="builder3dModal" class="builder3d-modal hidden" role="dialog" aria-modal="true" aria-labelledby="builder3dTitle">
+    <canvas id="builder3dCanvas" width="1280" height="760" aria-label="3Dルームビルダー"></canvas>
+    <div class="builder3d-topbar"><div><p>ROOM BUILDER</p><h2 id="builder3dTitle">3Dで部屋をつくる</h2></div><button id="closeBuilder3dBtn">間取り図へ戻る</button></div>
+    <div class="builder3d-tools">
+      <button class="active" data-build-tool="add">＋ 床を置く</button><button data-build-tool="remove">− 床を消す</button>
+      <label>壁の高さ <input id="wallHeight" type="range" min="180" max="360" step="10" value="240"><output id="wallHeightLabel">240cm</output></label>
+      <button id="rotateBuilderLeft" aria-label="左に回転">↶</button><button id="rotateBuilderRight" aria-label="右に回転">↷</button>
+      <button id="roomsTo3dBtn">既存の部屋を3D化</button>
+    </div>
+    <div class="builder3d-help"><strong>ゲーム感覚で床をクリック</strong><span>床の外周に壁が自動で立ち、変更は2D間取り図へ即時反映されます。</span></div>
+  </div>
   <div id="autoPlanModal" class="auto-plan-modal hidden" role="dialog" aria-modal="true" aria-labelledby="autoPlanTitle">
     <div class="auto-plan-card">
       <p class="eyebrow">AUTO LAYOUT</p><h2 id="autoPlanTitle">希望条件から間取りを作成</h2>
@@ -141,6 +153,7 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=23"></script>
+  <script src="builder3d.js?v=23"></script>
 </body>
 </html>
