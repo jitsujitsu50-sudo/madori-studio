@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=21">
+  <link rel="stylesheet" href="styles.css?v=22">
 </head>
 <body>
   <header class="topbar">
@@ -65,7 +65,8 @@
 
     <section class="workspace">
       <div class="canvas-toolbar">
-        <div class="segmented"><button class="active" data-mode="select">選択</button><button data-mode="pan">移動</button></div>
+        <div class="segmented"><button class="active" data-mode="select">選択</button><button data-mode="floor">床を置く</button><button data-mode="erase-floor">床を消す</button><button data-mode="pan">移動</button></div>
+        <div class="floor-palette" id="floorPalette" aria-label="床マスの色"><button class="active" data-floor-color="#ead8b7" style="--floor:#ead8b7" aria-label="オーク"></button><button data-floor-color="#d8c7a5" style="--floor:#d8c7a5" aria-label="ナチュラル"></button><button data-floor-color="#b9c9be" style="--floor:#b9c9be" aria-label="グリーン"></button><button data-floor-color="#c5d6dd" style="--floor:#c5d6dd" aria-label="ブルー"></button><small>ドラッグで連続編集・右クリックで削除</small></div>
         <label class="smart-resize" title="部屋を広げると、隣の部屋や外壁も一緒に移動します"><input id="smartResizeToggle" type="checkbox" checked><span>↗</span><b>連動リサイズ</b></label>
         <button id="fitViewBtn" class="toolbar-button">全体表示</button>
         <div id="imageControls" class="image-controls hidden"><span>下絵</span><input id="imageOpacity" type="range" min="10" max="100" value="45"><button id="removeImageBtn">削除</button></div>
@@ -100,7 +101,7 @@
         <button id="splitWallBtn" class="vertex-action hidden">壁を中央で分割</button>
         <div class="property-actions"><button id="duplicateBtn">複製</button><button id="deleteBtn" class="danger">削除</button></div>
       </div>
-      <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m² / 0.0 畳</strong></div><label class="tatami-setting">畳の規格<select id="tatamiSize"><option value="1.62">不動産表示 1.62㎡</option><option value="1.824">京間 1.824㎡</option><option value="1.6562">江戸間 1.656㎡</option><option value="1.445">団地間 1.445㎡</option></select></label></div>
+      <div class="summary-card"><p class="eyebrow">プラン概要</p><div><span>部屋数</span><strong id="roomCount">0</strong></div><div><span>床マス</span><strong id="floorTileCount">0</strong></div><div><span>延床面積</span><strong id="totalArea">0.0 m² / 0.0 畳</strong></div><label class="tatami-setting">畳の規格<select id="tatamiSize"><option value="1.62">不動産表示 1.62㎡</option><option value="1.824">京間 1.824㎡</option><option value="1.6562">江戸間 1.656㎡</option><option value="1.445">団地間 1.445㎡</option></select></label></div>
     </aside>
   </main>
   <div id="walkModal" class="walk-modal hidden" role="dialog" aria-modal="true" aria-label="室内ウォークスルー">
@@ -140,6 +141,6 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>
