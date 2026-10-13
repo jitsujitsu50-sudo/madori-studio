@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
   <header class="topbar">
@@ -119,7 +119,22 @@
       <small>※ 建築確認用の設計図ではありません。寸法・法規・構造は専門家にご確認ください。</small>
     </div>
   </div>
+  <div id="bedSizeModal" class="auto-plan-modal hidden" role="dialog" aria-modal="true" aria-labelledby="bedSizeTitle">
+    <div class="bed-size-card">
+      <p class="eyebrow">BED SIZE</p><h2 id="bedSizeTitle">ベッドサイズを選択</h2>
+      <p>一般的なマットレス寸法で配置します。設置後もプロパティから調整できます。</p>
+      <div class="bed-size-grid">
+        <button data-bed-name="シングルベッド" data-bed-w="0.97"><span class="bed-preview" style="--bed-w:52%"></span><strong>シングル</strong><small>97 × 195cm</small></button>
+        <button data-bed-name="セミダブルベッド" data-bed-w="1.20"><span class="bed-preview" style="--bed-w:64%"></span><strong>セミダブル</strong><small>120 × 195cm</small></button>
+        <button data-bed-name="ダブルベッド" data-bed-w="1.40"><span class="bed-preview" style="--bed-w:74%"></span><strong>ダブル</strong><small>140 × 195cm</small></button>
+        <button data-bed-name="クイーンベッド" data-bed-w="1.60"><span class="bed-preview" style="--bed-w:85%"></span><strong>クイーン</strong><small>160 × 195cm</small></button>
+        <button data-bed-name="キングベッド" data-bed-w="1.80"><span class="bed-preview" style="--bed-w:96%"></span><strong>キング</strong><small>180 × 195cm</small></button>
+      </div>
+      <div class="auto-plan-actions"><button id="cancelBedSizeBtn">キャンセル</button></div>
+      <small>※ メーカーにより実寸は異なります。搬入経路と通路幅もご確認ください。</small>
+    </div>
+  </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
