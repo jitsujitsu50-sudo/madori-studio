@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=25">
+  <link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
   <header class="topbar">
@@ -114,12 +114,16 @@
     <canvas id="builder3dCanvas" width="1280" height="760" aria-label="3Dルームビルダー"></canvas>
     <div class="builder3d-topbar"><div><p>ROOM BUILDER</p><h2 id="builder3dTitle">3Dで部屋をつくる</h2></div><button id="closeBuilder3dBtn">間取り図へ戻る</button></div>
     <div class="builder3d-tools">
-      <button class="active" data-build-tool="add">＋ 床を置く</button><button data-build-tool="remove">− 床を消す</button>
+      <button class="active" data-build-tool="add" title="ドラッグで連続して床を置く">＋ 床</button><button data-build-tool="remove" title="ドラッグで連続して床を消す">− 床消し</button><button data-build-tool="wall" title="辺をクリック・なぞって壁を追加/削除">▮ 壁</button><button data-build-tool="door" title="壁の辺にドアを配置">⌒ ドア</button><button data-build-tool="window" title="壁の辺に窓を配置">═ 窓</button><button data-build-tool="move" title="家具・建具を移動／空き地ドラッグで視点回転">✥ 移動・視点</button>
+      <select id="b3AddFurniture" aria-label="家具を追加"><option value="">＋家具</option><option value="ソファ|1.8|0.9">ソファ</option><option value="テーブル|1.4|0.8">テーブル</option><option value="シングルベッド|0.97|1.95">ベッド(S)</option><option value="ダブルベッド|1.4|1.95">ベッド(D)</option><option value="収納|0.9|0.45">収納</option></select>
       <label>壁の高さ <input id="wallHeight" type="range" min="180" max="360" step="10" value="240"><output id="wallHeightLabel">240cm</output></label>
-      <button id="rotateBuilderLeft" aria-label="左に回転">↶</button><button id="rotateBuilderRight" aria-label="右に回転">↷</button>
+      <button id="cutawayBtn" title="壁を低く表示して室内を見やすくする">壁を下げる</button>
+      <button id="rotateBuilderLeft" aria-label="左に回転" title="左に90°回転 (Q)">↶</button><button id="rotateBuilderRight" aria-label="右に回転" title="右に90°回転 (E)">↷</button><button id="fitBuilderBtn" title="全体を表示">全体</button><button id="b3UndoBtn" title="元に戻す">戻す</button>
       <button id="roomsTo3dBtn">既存の部屋を3D化</button>
     </div>
-    <div class="builder3d-help"><strong>ゲーム感覚で床をクリック</strong><span>床の外周に壁が自動で立ち、変更は2D間取り図へ即時反映されます。</span></div>
+    <div id="builder3dSelection" class="builder3d-selection hidden"><span id="b3SelName"></span><button id="b3RotateItem">90°回転 (R)</button><button id="b3DeleteItem" class="danger">削除</button></div>
+    <div id="builder3dStatus" class="builder3d-status"></div>
+    <div class="builder3d-help"><strong>ゲーム感覚で部屋をつくる</strong><span>ドラッグで床を塗り、辺をなぞって壁を立てます。右ドラッグ／2本指で視点回転、ホイール／ピンチでズーム、Shift+右ドラッグで移動。変更は2D間取り図へ即時反映されます。</span></div>
   </div>
   <div id="autoPlanModal" class="auto-plan-modal hidden" role="dialog" aria-modal="true" aria-labelledby="autoPlanTitle">
     <div class="auto-plan-card">
@@ -153,7 +157,8 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=25"></script>
-  <script src="builder3d.js?v=25"></script>
+  <script src="app.js?v=26"></script>
+  <script src="vendor/three.min.js?v=0.160.1"></script>
+  <script src="builder3d.js?v=26"></script>
 </body>
 </html>
