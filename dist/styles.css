@@ -133,3 +133,21 @@
 .plan-actions{display:flex;gap:5px;flex-wrap:wrap}
 .plan-actions .danger{color:#b4442f}
 .plans-note{display:block;margin-top:14px;color:var(--muted);font-size:11px;line-height:1.5}
+
+/* v31 room editing */
+.b3-sel-text{display:flex;flex-direction:column;gap:1px}
+.b3-sel-text small{color:#f2c776;font-size:10px}
+.b3-sel-text small:empty{display:none}
+#b3LockJo.active{border-color:#efb24e;background:#d9902d;color:#1f1b15}
+#b3LockJo.hidden{display:none}
+
+/* room tool palette lives in a compact side panel so it never covers the building */
+@media (min-width:901px){
+  .b3-palette.b3-palette-side{left:16px;right:auto;bottom:16px;transform:none;width:300px;max-width:300px;flex-direction:column;align-items:stretch;gap:8px;padding:10px}
+  .b3-palette-side .b3-pal-group{justify-content:flex-start;gap:4px}
+  .b3-palette-side button{min-width:0;padding:5px 8px;font-size:10px}
+  .b3-palette-side .b3-jo button{min-width:38px}
+  .b3-palette-side em{width:100%;padding:2px 0 0}
+  .builder3d-modal:has(.b3-palette-side) .builder3d-help{display:none}
+}
+@media (min-width:901px){.builder3d-selection{top:auto;bottom:100px}}
