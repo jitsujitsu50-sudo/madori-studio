@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=33">
+  <link rel="stylesheet" href="styles.css?v=34">
 </head>
 <body>
   <header class="topbar">
@@ -117,13 +117,14 @@
     <canvas id="builder3dCanvas" width="1280" height="760" aria-label="3Dルームビルダー"></canvas>
     <div class="builder3d-topbar"><div><p>ROOM BUILDER</p><h2 id="builder3dTitle">3Dで部屋をつくる</h2></div><button id="closeBuilder3dBtn">間取り図へ戻る</button></div>
     <div class="b3-side" aria-label="表示の設定">
+      <div id="b3RoofPanel" class="b3-roof-panel hidden"></div>
       <label class="b3-height">壁の高さ <input id="wallHeight" type="range" min="180" max="360" step="10" value="240"><output id="wallHeightLabel">240cm</output></label>
       <div class="b3-side-row">
         <button id="cutawayBtn" title="壁を低く表示して室内を見やすくする">壁を下げる</button>
         <button id="rotateBuilderLeft" aria-label="左に回転" title="左に90°回転 (Q)">↶</button><button id="rotateBuilderRight" aria-label="右に回転" title="右に90°回転 (E)">↷</button>
         <button id="fitBuilderBtn" title="全体を表示">全体</button><button id="b3UndoBtn" title="元に戻す">戻す</button><button id="b3SoundBtn" title="効果音">🔊</button>
       </div>
-      <button id="roomsTo3dBtn">既存の部屋を3D化</button>
+      <div class="b3-side-row"><button id="b3RoofBtn" title="屋根の形・勾配・素材（T）">🏠 屋根</button><button id="roomsTo3dBtn">既存の部屋を3D化</button></div>
     </div>
     <div id="b3Palette" class="b3-palette hidden" aria-label="素材・色・家具の選択"></div>
     <div id="b3Hotbar" class="b3-hotbar" role="toolbar" aria-label="ツール（1〜9キー）"></div>
@@ -179,11 +180,11 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=33"></script>
-  <script src="tatami.js?v=33"></script>
-  <script src="plans.js?v=33"></script>
+  <script src="app.js?v=34"></script>
+  <script src="tatami.js?v=34"></script>
+  <script src="plans.js?v=34"></script>
   <script src="vendor/three.min.js?v=0.160.1"></script>
-  <script src="b3assets.js?v=33"></script>
-  <script src="builder3d.js?v=33"></script>
+  <script src="b3assets.js?v=34"></script>
+  <script src="builder3d.js?v=34"></script>
 </body>
 </html>

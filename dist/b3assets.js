@@ -154,6 +154,53 @@ const B3A = (() => {
     return s.toDataURL();
   }
 
+  // ---------- roofing (u = along the eave, v = up the slope) ----------
+  const ROOFS = {
+    kawara: { name: '瓦（いぶし）', tex: () => canvasTex('kawara', 512, (g, s) => {
+      const rows = 8, cols = 12, rh = s / rows, cw = s / cols;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = c * cw, y = r * rh, gr = g.createLinearGradient(x, 0, x + cw, 0);
+          gr.addColorStop(0, '#4e555c'); gr.addColorStop(0.45, '#8d959c'); gr.addColorStop(1, '#3d4348');
+          g.fillStyle = gr; g.fillRect(x, y, cw, rh);
+        }
+        const sh = g.createLinearGradient(0, r * rh, 0, r * rh + rh); sh.addColorStop(0, 'rgba(0,0,0,.35)'); sh.addColorStop(0.25, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(255,255,255,.08)');
+        g.fillStyle = sh; g.fillRect(0, r * rh, s, rh);
+      }
+      noise(g, s, 4000, 0.08, false);
+    }, { repeatMeters: 2 }) },
+    terracotta: { name: '洋瓦', tex: () => canvasTex('terracotta', 512, (g, s) => {
+      const rows = 8, cols = 10, rh = s / rows, cw = s / cols;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const x = c * cw + (r % 2 ? cw / 2 : 0), y = r * rh, base = shade('#b4593a', (rnd() - 0.5) * 0.08), gr = g.createLinearGradient(x, 0, x + cw, 0);
+        gr.addColorStop(0, shade(base, -0.12)); gr.addColorStop(0.5, shade(base, 0.08)); gr.addColorStop(1, shade(base, -0.14));
+        g.fillStyle = gr; g.fillRect(x, y, cw, rh); g.fillRect(x - s, y, cw, rh);
+        g.fillStyle = 'rgba(40,15,5,.35)'; g.fillRect(x, y, cw, 4);
+      }
+      noise(g, s, 4000, 0.06, false);
+    }, { repeatMeters: 2.2 }) },
+    slate: { name: 'スレート', tex: () => canvasTex('slate', 512, (g, s) => {
+      const rows = 10, cols = 6, rh = s / rows, cw = s / cols;
+      for (let r = 0; r < rows; r++) for (let c = -1; c < cols; c++) {
+        const x = c * cw + (r % 2 ? cw / 2 : 0); g.fillStyle = shade('#3f4447', (rnd() - 0.5) * 0.06); g.fillRect(x, r * rh, cw - 2, rh);
+        g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(x, r * rh, cw, 3); g.fillRect(x + cw - 2, r * rh, 2, rh);
+      }
+      noise(g, s, 6000, 0.05, true);
+    }, { repeatMeters: 2.4 }) },
+    galva: { name: 'ガルバリウム', tex: () => canvasTex('galva', 512, (g, s) => {
+      g.fillStyle = '#4a5560'; g.fillRect(0, 0, s, s);
+      const n = 12, cw = s / n;
+      for (let c = 0; c < n; c++) { const x = c * cw; g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(x, 0, 3, s); g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(x + 3, 0, 3, s); }
+      noise(g, s, 3000, 0.04, true);
+    }, { repeatMeters: 4.8 }) },
+  };
+  function roofMaterial(key) {
+    const id = 'roof:' + key; if (cache[id]) return cache[id];
+    const map = (ROOFS[key] || ROOFS.kawara).tex();
+    return (cache[id] = new THREE.MeshStandardMaterial({ map, roughness: key === 'galva' ? 0.45 : 0.75, metalness: key === 'galva' ? 0.45 : 0, envMapIntensity: 0.6, side: THREE.DoubleSide, bumpMap: map, bumpScale: 0.01 }));
+  }
+  function roofSwatch(key) { const c = ROOFS[key].tex().userData.canvas, s = document.createElement('canvas'); s.width = s.height = 48; s.getContext('2d').drawImage(c, 0, 0, c.width / 2, c.height / 2, 0, 0, 48, 48); return s.toDataURL(); }
+
   // ---------- environment ----------
   function skyTexture() {
     return canvasTex('sky', 512, (g, s) => {
@@ -255,6 +302,7 @@ const B3A = (() => {
     { name: '収納ラック', v: 'rack', cat: '収納', w: 0.9, d: 0.45 }, { name: '本棚', v: 'bookshelf', cat: '収納', w: 0.8, d: 0.3 },
     { name: 'ワードローブ', v: 'wardrobe', cat: '収納', w: 1.0, d: 0.6 }, { name: 'チェスト', v: 'chest', cat: '収納', w: 0.8, d: 0.45 }, { name: '食器棚', v: 'cupboard', cat: '収納', w: 1.0, d: 0.45 },
     { name: 'アイランドキッチン', v: 'island', cat: 'キッチン・家電', w: 2.4, d: 0.95 },
+    { name: '壁掛けテレビ（55型）', v: 'wallTv', cat: 'キッチン・家電', w: 1.25, d: 0.1 }, { name: '壁掛けテレビ（65型）', v: 'wallTv', cat: 'キッチン・家電', w: 1.46, d: 0.1 },
     { name: '丸ラグ', v: 'roundRug', cat: 'インテリア', w: 1.4, d: 1.4 }, { name: 'フロアランプ', v: 'lamp', cat: 'インテリア', w: 0.4, d: 0.4 },
     { name: '乗用車', v: 'car', cat: '庭・外構', w: 1.8, d: 4.6 }, { name: '軽自動車', v: 'car', cat: '庭・外構', w: 1.48, d: 3.4 }, { name: '自転車', v: 'bike', cat: '庭・外構', w: 0.6, d: 1.8 },
     { name: '庭木', v: 'tree', cat: '庭・外構', w: 1.4, d: 1.4 }, { name: '植え込み', v: 'hedge', cat: '庭・外構', w: 2.0, d: 0.6 },
@@ -306,6 +354,7 @@ const B3A = (() => {
     if (/ガーデン/.test(name)) return 'gardenSet';
     if (/物置/.test(name)) return 'shed';
     if (/キッチン/.test(name)) return 'kitchen';
+    if (/壁掛け/.test(name) && /テレビ|TV/.test(name)) return 'wallTv';
     if (/テレビ|TV/.test(name)) return 'tv';
     if (/テーブル|ダイニング/.test(name)) return 'table';
     if (/デスク|机/.test(name)) return 'desk';
@@ -499,6 +548,14 @@ const B3A = (() => {
         part(g, box(w - 0.01, 0.01, 0.02), mat('#9da2a5'), 0, h * 0.62, d / 2);
         part(g, box(0.025, 0.4, 0.03), handle, w / 2 - 0.07, h * 0.8, d / 2 + 0.02);
         part(g, box(0.025, 0.3, 0.03), handle, w / 2 - 0.07, h * 0.45, d / 2 + 0.02);
+        break;
+      }
+      case 'wallTv': {   // mounted on the wall behind it (back = -Z), screen centre about 1.15m
+        const sh = w * 0.565, y = 1.15, dark = mat('#0b0c0e', { roughness: 0.15, metalness: 0.3 });
+        part(g, box(0.3, 0.2, 0.03), mat('#333'), 0, y, -d / 2 + 0.015);                          // bracket
+        part(g, roundedBox(w, sh, 0.035, 0.008), mat('#1a1b1d', { roughness: 0.4 }), 0, y, -d / 2 + 0.05);
+        const scr = part(g, box(w - 0.02, sh - 0.02, 0.002), mat('#141a22', { roughness: 0.05, metalness: 0.2, emissive: '#1d2a3a', emissiveIntensity: 0.6 }), 0, y, -d / 2 + 0.068); scr.castShadow = false;
+        part(g, box(w * 0.35, 0.025, 0.02), dark, 0, y - sh / 2 - 0.03, -d / 2 + 0.06);             // soundbar
         break;
       }
       case 'roundTable': {
@@ -726,7 +783,7 @@ const B3A = (() => {
     return g;
   }
   // blocking footprint used for walk-mode collisions (rugs are walkable)
-  const blocks = item => !['rug', 'roundRug'].includes(model(item));
+  const blocks = item => !['rug', 'roundRug', 'wallTv'].includes(model(item));
 
   // ---------- openings (built in the wall's local frame: x along wall, z across) ----------
   // spec: { type, style, w (plan px), bottom, top }. Built in the wall's local frame: x along wall, z across.
@@ -839,5 +896,5 @@ const B3A = (() => {
   }
   function setMuted(v) { muted = v; try { localStorage.setItem('madori-sound', v ? 'off' : 'on'); } catch {} }
 
-  return { FLOORS, WALL_COLORS, CATALOG, CATS, catalogIndex, model, floorMaterial, swatch, skyTexture, environment, lawnMaterial, siteMaterial, furniture, opening, railing, kind, blocks, mat, roundedBox, sound, setMuted, isMuted: () => muted };
+  return { FLOORS, WALL_COLORS, ROOFS, roofMaterial, roofSwatch, CATALOG, CATS, catalogIndex, model, floorMaterial, swatch, skyTexture, environment, lawnMaterial, siteMaterial, furniture, opening, railing, kind, blocks, mat, roundedBox, sound, setMuted, isMuted: () => muted };
 })();

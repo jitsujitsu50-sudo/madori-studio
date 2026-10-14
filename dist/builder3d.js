@@ -56,7 +56,7 @@ const TOOLS = [
 const HINTS = {
   room: '畳数を選んでクリックで部屋を配置（[ ]で奥行き変更・畳数はそのまま／Rで回転）',
   add: 'ドラッグで床を塗る（バルコニー床は手すり付き。同じ場所なら張り替え）', remove: 'ドラッグで床を消す', wall: '壁をクリックで撤去・空いた辺をクリックで追加（「1マスずつ」はなぞって部分的に）',
-  door: '壁の辺をクリックして扉を設置（7種類）', window: '壁の辺をクリックして窓を設置（掃き出し窓はバルコニーへの出入りに）', furniture: '種類→タイプを選んでクリックで置く（Rで回転）。置いた家具は「移動」で選ぶと種類を変更できます',
+  door: '壁の辺をクリックして扉を設置（7種類）', window: '壁の辺をクリックして窓を設置（掃き出し窓はバルコニーへの出入りに）', furniture: '種類→タイプを選んでクリックで置く（Rで回転。壁掛けテレビは壁に付きます）。置いた家具は「移動」で選ぶと種類を変更できます',
   paint: '壁をクリック／なぞって色を塗る', move: '部屋・家具・建具をドラッグで移動（部屋を選ぶと取っ手でサイズ変更）／空き地ドラッグで視点回転', walk: 'WASD・矢印で移動／ドラッグで見回す／Escで終了',
 };
 
@@ -517,6 +517,99 @@ function floorSides(tiles, s) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
 
+// ---------- roof over each building (bounding box of every connected indoor floor group) ----------
+const ROOF_FADE = {};
+const ROOF_TYPES = [['none', 'なし'], ['flat', '陸屋根'], ['shed', '片流れ'], ['gable', '切妻'], ['hip', '寄棟']];
+function roofCfg() { return Object.assign({ type: 'none', pitch: 4, dir: 'auto', flip: false, mat: 'kawara', eave: 0.45, show: true }, roof || {}); }
+function setRoof(patch) { checkpoint(); roof = Object.assign(roofCfg(), patch); render(); scheduleSave(); b3RenderRoofPanel(); }
+function buildingBoxes(tiles) {
+  const indoor = tiles.filter(t => !isOutdoor(t)), set = new Set(indoor.map(t => `${t.gx}:${t.gy}`)), seen = new Set(), out = [];
+  indoor.forEach(t => {
+    const k0 = `${t.gx}:${t.gy}`; if (seen.has(k0)) return; seen.add(k0);
+    const q = [[t.gx, t.gy]], b = { x0: t.gx, y0: t.gy, x1: t.gx + 1, y1: t.gy + 1, n: 0 };
+    while (q.length) {
+      const [x, y] = q.pop(); b.n++; b.x0 = Math.min(b.x0, x); b.y0 = Math.min(b.y0, y); b.x1 = Math.max(b.x1, x + 1); b.y1 = Math.max(b.y1, y + 1);
+      [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].forEach(([nx, ny]) => { const k = `${nx}:${ny}`; if (set.has(k) && !seen.has(k)) { seen.add(k); q.push([nx, ny]); } });
+    }
+    if (b.n >= 4) out.push(b);
+  });
+  return out;
+}
+function roofVisible() { const r = roofCfg(); return r.type !== 'none' && r.show && !lowered(); }
+function buildRoof(tiles) {
+  const cfg = roofCfg(); if (!roofVisible()) return;
+  const s = cellM(), slope = cfg.pitch / 10, Hw = fullH(), H = Hw + 0.03 + slope * (B3_THICK / 2 + 0.02), e = cfg.eave, T = 0.1;   // roof sits just above the outer wall face
+  const see = B3.walk.on || B3.tool === 'move' || B3.roofPanel, roofM = B3A.roofMaterial(cfg.mat), wallM = B3A.mat('#f2efe9', { roughness: 0.88, side: THREE.DoubleSide }), soffit = B3A.mat('#e9e4da', { roughness: 0.9, side: THREE.DoubleSide });
+  const fade = m => { if (see) return m; const k = m.uuid; if (!ROOF_FADE[k]) { const c = m.clone(); c.transparent = true; c.opacity = 0.3; c.depthWrite = false; ROOF_FADE[k] = c; } return ROOF_FADE[k]; };
+  buildingBoxes(tiles).forEach(bx => {
+    const X0 = bx.x0 * s, X1 = bx.x1 * s, Z0 = bx.y0 * s, Z1 = bx.y1 * s;
+    let alongX = cfg.dir === 'x' ? true : cfg.dir === 'z' ? false : (X1 - X0) >= (Z1 - Z0);
+    if (cfg.type === 'hip' && (alongX ? X1 - X0 : Z1 - Z0) < (alongX ? Z1 - Z0 : X1 - X0)) alongX = !alongX;   // hip ridge runs along the long side
+    const a0 = alongX ? X0 : Z0, a1 = alongX ? X1 : Z1, b0 = alongX ? Z0 : X0, b1 = alongX ? Z1 : X1, bm = (b0 + b1) / 2, W2 = (b1 - b0) / 2;
+    const A0 = a0 - e, A1 = a1 + e, B0 = b0 - e, B1 = b1 + e;
+    const P = (a, y, b) => { if (cfg.type === 'shed' && cfg.flip) b = b0 + b1 - b; return alongX ? [a, y, b] : [b, y, a]; };
+    const top = { pos: [], uv: [], idx: [] }, under = { pos: [], uv: [], idx: [] }, walls = { pos: [], uv: [], idx: [] };
+    const face = (G, pts, rep = 1, dy = 0) => {   // planar polygon, first edge horizontal (eave)
+      const p0 = pts[0], d01 = pts[1].map((v, i) => v - p0[i]), lu = Math.hypot(...d01), U = d01.map(v => v / lu), w = pts[pts.length - 1].map((v, i) => v - p0[i]), wu = w[0] * U[0] + w[1] * U[1] + w[2] * U[2], Vr = w.map((v, i) => v - U[i] * wu), lv = Math.hypot(...Vr) || 1, V = Vr.map(v => v / lv), n = G.pos.length / 3;
+      pts.forEach(p => { G.pos.push(p[0], p[1] + dy, p[2]); const d = p.map((v, i) => v - p0[i]); G.uv.push((d[0] * U[0] + d[1] * U[1] + d[2] * U[2]) / rep, (d[0] * V[0] + d[1] * V[1] + d[2] * V[2]) / rep); });
+      for (let i = 1; i < pts.length - 1; i++) G.idx.push(n, n + i, n + i + 1);
+    };
+    const rep = B3A.ROOFS[cfg.mat]?.tex().userData.repeatMeters || 2;
+    const roofFace = pts => { face(top, pts, rep); face(under, pts, 2, -T); };
+    let outline = [];
+    if (cfg.type === 'flat') {
+      const f = Math.min(e, 0.3), y = H + 0.16;
+      roofFace([P(A0 + e - f, y, B0 + e - f), P(A1 - e + f, y, B0 + e - f), P(A1 - e + f, y, B1 - e + f), P(A0 + e - f, y, B1 - e + f)]);
+      outline = [P(A0 + e - f, y, B0 + e - f), P(A1 - e + f, y, B0 + e - f), P(A1 - e + f, y, B1 - e + f), P(A0 + e - f, y, B1 - e + f)];
+    } else if (cfg.type === 'gable') {
+      const yE = H - slope * e, yR = H + slope * W2;
+      roofFace([P(A0, yE, B0), P(A1, yE, B0), P(A1, yR, bm), P(A0, yR, bm)]);
+      roofFace([P(A1, yE, B1), P(A0, yE, B1), P(A0, yR, bm), P(A1, yR, bm)]);
+      [a0, a1].forEach(a => face(walls, [P(a, Hw, b0), P(a, Hw, b1), P(a, yR, bm)]));
+      outline = [P(A0, yE, B0), P(A1, yE, B0), P(A1, yR, bm), P(A1, yE, B1), P(A0, yE, B1), P(A0, yR, bm)];
+    } else if (cfg.type === 'hip') {
+      const yE = H - slope * e, yR = H + slope * W2, inset = bm - B0, r0 = Math.min(A0 + inset, (A0 + A1) / 2), r1 = Math.max(A1 - inset, (A0 + A1) / 2);
+      roofFace([P(A0, yE, B0), P(A1, yE, B0), P(r1, yR, bm), P(r0, yR, bm)]);
+      roofFace([P(A1, yE, B1), P(A0, yE, B1), P(r0, yR, bm), P(r1, yR, bm)]);
+      roofFace([P(A0, yE, B1), P(A0, yE, B0), P(r0, yR, bm)]);
+      roofFace([P(A1, yE, B0), P(A1, yE, B1), P(r1, yR, bm)]);
+      outline = [P(A0, yE, B0), P(A1, yE, B0), P(A1, yE, B1), P(A0, yE, B1)];
+    } else if (cfg.type === 'shed') {
+      const y = b => H + slope * (b - b0), yHi = y(b1);
+      roofFace([P(A0, y(B0), B0), P(A1, y(B0), B0), P(A1, y(B1), B1), P(A0, y(B1), B1)]);
+      [a0, a1].forEach(a => face(walls, [P(a, Hw, b0), P(a, Hw, b1), P(a, yHi, b1)]));
+      face(walls, [P(a0, Hw, b1), P(a1, Hw, b1), P(a1, yHi, b1), P(a0, yHi, b1)]);
+      outline = [P(A0, y(B0), B0), P(A1, y(B0), B0), P(A1, y(B1), B1), P(A0, y(B1), B1)];
+    }
+    // fascia: thickness along the roof outline
+    const fas = { pos: [], uv: [], idx: [] };
+    outline.forEach((p, i) => { const q = outline[(i + 1) % outline.length]; face(fas, [p, q, [q[0], q[1] - T, q[2]], [p[0], p[1] - T, p[2]]]); });
+    const mk = (G, m, data) => {
+      if (!G.idx.length) return; const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(G.pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(G.uv, 2)); geo.setIndex(G.idx); geo.computeVertexNormals();
+      const mesh = new THREE.Mesh(geo, fade(m)); mesh.castShadow = see; mesh.receiveShadow = true; mesh.userData.roof = true; if (!see) mesh.renderOrder = 3; b3root.add(mesh);
+    };
+    mk(top, roofM); mk(under, soffit); mk(walls, wallM); mk(fas, B3A.mat('#d8d3c9', { roughness: 0.7, side: THREE.DoubleSide }));
+  });
+}
+function b3RenderRoofPanel() {
+  const p = $('b3RoofPanel'), cfg = roofCfg(); p.classList.toggle('hidden', !B3.roofPanel); $('b3RoofBtn').classList.toggle('active', !!B3.roofPanel); if (!B3.roofPanel) return;
+  const sloped = ['shed', 'gable', 'hip'].includes(cfg.type), btn = (attr, val, label, on) => `<button data-${attr}="${val}" class="${on ? 'active' : ''}">${label}</button>`;
+  p.innerHTML = `<div class="b3-roof-head"><b>屋根</b><button data-roof-close>×</button></div>`
+    + `<label>形</label><div class="b3-roof-row">${ROOF_TYPES.map(([k, n]) => btn('rtype2', k, n, cfg.type === k)).join('')}</div>`
+    + (cfg.type !== 'none' ? (sloped ? `<label>勾配（10進むと何寸上がるか）</label><div class="b3-roof-row">${[2, 3, 4, 5, 6, 8].map(n => btn('rpitch', n, n + '寸', cfg.pitch === n)).join('')}</div>`
+      + `<label>${cfg.type === 'shed' ? '傾ける向き' : '棟の向き'}</label><div class="b3-roof-row">${[['auto', '自動'], ['x', '横'], ['z', '縦']].map(([k, n]) => btn('rdir', k, n, cfg.dir === k)).join('')}${cfg.type === 'shed' ? btn('rflip', 1, '⇅ 高い側を反対に', cfg.flip) : ''}</div>` : '')
+      + `<label>屋根材</label><div class="b3-roof-row">${Object.entries(B3A.ROOFS).map(([k, r]) => `<button data-rmat="${k}" class="b3-roof-mat ${cfg.mat === k ? 'active' : ''}"><img alt="" src="${B3A.roofSwatch(k)}"><span>${r.name}</span></button>`).join('')}</div>`
+      + `<label>軒の出</label><div class="b3-roof-row">${[0, 0.3, 0.45, 0.6, 0.9].map(n => btn('reave', n, Math.round(n * 100) + 'cm', Math.abs(cfg.eave - n) < 1e-6)).join('')}</div>`
+      + `<div class="b3-roof-row">${btn('rshow', 1, cfg.show ? '屋根を隠す' : '屋根を表示', !cfg.show)}</div><small>屋根は建物（つながった室内の床）全体の外形にかかります。編集中は半透明、「移動」と「歩く」では本来の見た目になります。</small>` : '');
+  p.querySelector('[data-roof-close]').onclick = () => { B3.roofPanel = false; b3RenderRoofPanel(); b3MarkDirty(); };
+  p.querySelectorAll('[data-rtype2]').forEach(b => b.onclick = () => setRoof({ type: b.dataset.rtype2, show: true }));
+  p.querySelectorAll('[data-rpitch]').forEach(b => b.onclick = () => setRoof({ pitch: +b.dataset.rpitch }));
+  p.querySelectorAll('[data-rdir]').forEach(b => b.onclick = () => setRoof({ dir: b.dataset.rdir }));
+  p.querySelectorAll('[data-rflip]').forEach(b => b.onclick = () => setRoof({ flip: !cfg.flip }));
+  p.querySelectorAll('[data-rmat]').forEach(b => b.onclick = () => setRoof({ mat: b.dataset.rmat }));
+  p.querySelectorAll('[data-reave]').forEach(b => b.onclick = () => setRoof({ eave: +b.dataset.reave }));
+  p.querySelectorAll('[data-rshow]').forEach(b => b.onclick = () => setRoof({ show: !cfg.show }));
+}
 function b3Rebuild() {
   if (!b3renderer) return;
   B3.dirty = false; B3.colliders = [];
@@ -558,6 +651,7 @@ function b3Rebuild() {
     }
     buildWall(a[0], a[1], b[0], b[1], H, B3A.mat(r.color || '#f2efe9', { roughness: 0.88 }), holesFor(a[0], a[1], ux, uz, len, specs), { autoWall: r });
   });
+  buildRoof(tiles);
   items.forEach(i => {
     const [cx, cz] = itemCenter(i), rot = itemRot(i), sel = i.id === B3.selectedId;
     if (i.type === 'wall') {
@@ -669,7 +763,14 @@ function b3Edge(e) {
 // Furniture placement: snap the rotated footprint to the grid.
 function furniturePlacement(e) {
   const p = b3Ground(e); if (!p) return null;
-  const c = B3A.CATALOG[B3.furn], W = c.w * PX, Dp = c.d * PX, rot = B3.ghostRot, swap = rot % 180 !== 0, fw = swap ? Dp : W, fd = swap ? W : Dp;
+  const c0 = B3A.CATALOG[B3.furn];
+  if (c0.v === 'wallTv') {
+    const ed = b3Edge(e); if (!ed) return null; const s = cellM(), hit = b3Pick(e, isWallMesh), q = hit ? hit.point : p, cam = b3camera.position, off = B3_THICK / 2 + c0.d / 2 + 0.005, W = c0.w * PX, Dp = c0.d * PX; let cx, cz, rot;
+    if (ed.k === 'h') { const Z = ed.gy * s, f = cam.z > Z ? 1 : -1; cx = Math.round(q.x * 20) / 20; cz = Z + f * off; rot = f > 0 ? 0 : 180; }
+    else { const X = ed.gx * s, f = cam.x > X ? 1 : -1; cz = Math.round(q.z * 20) / 20; cx = X + f * off; rot = f > 0 ? 270 : 90; }
+    return { name: c0.name, variant: c0.v, x: cx * PX - W / 2, y: cz * PX - Dp / 2, w: W, h: Dp, rotation: rot };
+  }
+  const c = c0, W = c.w * PX, Dp = c.d * PX, rot = B3.ghostRot, swap = rot % 180 !== 0, fw = swap ? Dp : W, fd = swap ? W : Dp;
   const left = snap(p.x * PX - fw / 2), top = snap(p.z * PX - fd / 2), cx = left + fw / 2, cy = top + fd / 2;
   return { name: c.name, variant: c.v, x: cx - W / 2, y: cy - Dp / 2, w: W, h: Dp, rotation: rot };
 }
@@ -1029,7 +1130,7 @@ function shape2dFurniture() {
     }
   });
 }
-render = function () { renderBefore3d(); shape2dFurniture(); if (B3.selectedId && !items.some(i => i.id === B3.selectedId)) B3.selectedId = null; if (b3Open()) { b3UpdateSelection(); b3MarkDirty(); } };
+render = function () { renderBefore3d(); shape2dFurniture(); if (B3.roofPanel && b3Open()) b3RenderRoofPanel(); if (B3.selectedId && !items.some(i => i.id === B3.selectedId)) B3.selectedId = null; if (b3Open()) { b3UpdateSelection(); b3MarkDirty(); } };
 shape2dFurniture();   // the first 2D render ran before this file loaded
 
 $('builder3dBtn').onclick = () => { $('builder3dModal').classList.remove('hidden'); B3.fitted = false; B3.selectedId = null; b3RenderHotbar(); b3RenderPalette(); b3UpdateSelection(); b3UpdateSound(); requestAnimationFrame(resizeBuilder); };
@@ -1047,6 +1148,7 @@ $('b3Variant').onchange = () => {
   checkpoint(); const cx = i.x + i.w / 2, cy = i.y + i.h / 2; i.w = c.w * PX; i.h = c.d * PX; i.x = cx - i.w / 2; i.y = cy - i.h / 2; i.name = c.name; i.variant = c.v;
   B3.pop.set(i.id, performance.now()); render(); scheduleSave(); B3A.sound('place'); toast(`${c.name}に変更しました`); $('b3Variant').blur();
 };
+$('b3RoofBtn').onclick = () => { B3.roofPanel = !B3.roofPanel; b3RenderRoofPanel(); b3MarkDirty(); };
 $('b3Connect').onclick = () => { const r = selectedRoom(); if (r) toggleConnect(r); };
 $('b3LockJo').onclick = () => { const r = selectedRoom(); if (!r) return; checkpoint(); if (r.tatami) delete r.tatami; else r.tatami = Math.round(roomArea(r) / tatami() * 10) / 10; render(); scheduleSave(); b3UpdateSelection(); B3A.sound('select'); };
 $('b3RotateItem').onclick = () => { const it = items.find(i => i.id === B3.selectedId); if (!it) return; if (it.type === 'room') { rotateRoom(it); B3A.sound('select'); return; } checkpoint(); it.rotation = ((it.rotation || 0) + 90) % 360; render(); scheduleSave(); B3A.sound('select'); };
@@ -1064,6 +1166,7 @@ window.addEventListener('keydown', e => {
   else if (/^[0-9]$/.test(key)) { const t = TOOLS[(+key + 9) % 10]; if (t) b3SetTool(t[0]); }
   else if ((key === '[' || key === ']') && B3.tool === 'room') b3RoomDepth(key === ']' ? 1 : -1);
   else if (key === 'r') { if (B3.tool === 'furniture' || B3.tool === 'room') { B3.ghostRot = (B3.ghostRot + 90) % 360; b3ghostKey = ''; if (B3.tool === 'room') b3RenderPalette(); b3UpdateGhost(); b3Draw(); } else if (B3.selectedId) $('b3RotateItem').click(); }
+  else if (key === 't') { if (roofCfg().type === 'none') { B3.roofPanel = true; b3RenderRoofPanel(); } else setRoof({ show: !roofCfg().show }); }
   else if (key === 'q') $('rotateBuilderLeft').click();
   else if (key === 'e') $('rotateBuilderRight').click();
 }, true);

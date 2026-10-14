@@ -18,7 +18,7 @@
 
 ## 構成
 - 静的サイト。ビルド不要。公開対象は `dist/` のみ。
-- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v33）。
+- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v34）。
 - `dist/app.js` — 2D間取り編集。`items`（部屋・壁・建具・家具）と `floorTiles` を管理。
 - `dist/tatami.js` — 2D の畳数指定（部屋追加時の畳数、プロパティの畳数・畳数固定、リサイズ時の面積維持）。`app.js` の直後に読み込み、`updateInspector`/`smartResize`/プロパティ入力を上書きする。
 - `dist/plans.js` — プラン管理（複数プランの保存・切替・複製・名前変更・削除、ファイル書き出し/読み込み）。`tatami.js` の後に読み込み、`save` を上書きして編集中プランの控えを更新する。
@@ -28,7 +28,7 @@
 - `dist/styles.css`
 
 ## データ設計（壊さないこと）
-- localStorage `madori-data`: `{items, floorTiles, hiddenEdges, wallPaint, name, grid, tatami, dataVersion}`
+- localStorage `madori-data`: `{items, floorTiles, hiddenEdges, wallPaint, roof, name, grid, tatami, dataVersion}`
   - 項目の追加は「後方互換で追加のみ」。古いデータ（hiddenEdges なし）も読めること。
 - localStorage `madori-plans`: プラン一覧 `[{id,name,data(=madori-dataと同じJSON文字列),wallHeight,createdAt,updatedAt}]`。`madori-current-plan`: 編集中プランのid。編集中のデータ本体は従来どおり `madori-data`。プランを開くと `madori-data` に書き込んで再読み込みする。
 - 書き出しファイル `*.madori.json`: `{format:'madori-studio-plan',version:1,name,wallHeight,data:{…madori-dataと同じ…}}`。
@@ -40,6 +40,8 @@
 - 床マスの床材は `floorTiles[].mat`（oak/walnut/whiteoak/tile/marble/tatami/carpet/mortar/deck/grass/gravel/concrete）。`grass`(庭)/`gravel`(砂利)/`concrete`(駐車場) も `outdoor:true`：延床に含めず、自前の壁も手すりも作らない（室内床との境だけ壁）。`deck` はバルコニー床：屋外扱いで、室内床との境は壁、外気側の辺は手すり（自動壁の `rail:true`）になる。`mat` なしの古いデータは `color` で着色した木目で表示。2Dで色を塗り直すと `mat` は消える。
 - 自動壁の壁色は `wallPaint`（キー = hiddenEdges と同じ辺キー → 色）。
 - 家具の3D形状は追加フィールド `variant`（モデル名: sofa/lsofa/couch/roundTable/lowTable/rack/car/tree など）で決まる。`variant` のない古い家具は名前から推定（`B3A.kind`）。カタログは `B3A.CATALOG`（`{name,v,cat,w,d}`、先頭16件は旧順序を維持）とカテゴリ `B3A.CATS`。3Dで家具を選ぶと同じカテゴリ内で種類を変更できる（中心を保ってサイズを置き換え）。
+- `roof`（v34、なければ null＝屋根なし）: `{type:'none'|'flat'|'shed'|'gable'|'hip', pitch:寸(2〜8), dir:'auto'|'x'|'z'(棟の向き), flip:片流れの高い側反転, mat:'kawara'|'terracotta'|'slate'|'galva', eave:軒の出m, show}`。屋根は「4マス以上つながった室内床」グループごとの外接矩形にかかる（`buildingBoxes`）。`app.js` の state/restoreState/save/load で保存・undo 対象。壁を下げる表示中は非表示、移動/歩く以外の編集中は半透明。
+- 壁掛けテレビ（`variant:'wallTv'`）は配置時にポインタ位置の壁へ吸着し、カメラ側を向く。
 - 部屋の形は `points`（0〜1の単位座標の多角形。四角=`[[0,0],[1,0],[1,1],[0,1]]`、L字は6点）。3Dの床マスと間仕切り壁は「中心が多角形の内側にあるマス」(`roomCellKeys`)から作るので、L字でも正しい壁になる。部屋は rotation を使わず、90°回転は points を回して幅・奥行きを入れ替える。
 - 3Dの移動ツールで部屋をドラッグすると、床マス（マスごとの床材を保持）・中の家具・壁上のドア/窓が一緒に動く。取っ手でサイズ変更（畳数固定なら反対方向が追従）。近くの部屋の辺へマグネット吸着し、接する辺は同じ辺キーになるので壁は1枚。
 - 部屋アイテムの追加フィールド `tatami`（数値）＝畳数固定。面積 `tatami × 畳の規格(tatami())` を維持する（幅を変えると奥行きが追従）。3Dの「部屋」ツールで置いた部屋は選んだ畳数で固定される（グリッドに合わせるため実面積は近似。ラベルに実際の畳数を表示）。
@@ -51,6 +53,7 @@
 3. index.html のバージョン番号を上げてコミット → `main` に push
 
 ## 履歴メモ
+- v34: 屋根（なし/陸屋根/片流れ/切妻/寄棟、勾配2〜8寸、棟の向き、片流れの反転、瓦/洋瓦/スレート/ガルバリウム、軒の出、表示切替 Tキー）、妻壁、壁掛けテレビ（55/65型、壁に吸着）
 - v33: 家具を「カテゴリ→種類」で選ぶ方式に（51種：丸テーブル・こたつ・L字デスク・スツール・オフィスチェア・座椅子・L字ソファ・カウチ・二段ベッド・布団・収納ラック・本棚・ワードローブ・食器棚・アイランドキッチン・丸ラグ・ランプ・車・自転車・庭木・植え込み・ガーデンテーブル・物置など）。置いた家具は選択パネルの▼で種類変更。部屋に庭・駐車場・クローゼット・ウォークインクローゼット追加（廊下は細長、駐車場は2.5×5m）。床材に芝生・砂利・コンクリート。2Dで丸テーブルは円、L字ソファ/デスクはL形表示。壁1面モードでも新しい壁はなぞって描ける
 - v32: 壁ツールに「壁1面ごと」モード（クリックで角〜角の直線の壁をまとめて撤去／復活、`B3.wallMode='run'`）と「1マスずつ」モード（従来のなぞり）。部屋選択時の「隣とつなげる」ボタンで、くっついた部屋との間の壁を一括撤去／復活（キッチン＋LD→LDK）。どちらも `hiddenEdges` に記録
 - v25: Sites 公開済み（canvas 2D のアイソメ表示）

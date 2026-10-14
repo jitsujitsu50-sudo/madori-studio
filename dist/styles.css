@@ -163,3 +163,16 @@
 .b3-palette-side .b3-variants button{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
 .b3-palette-side .b3-variants button small{opacity:.6;font-size:9px}
 .b3-palette-side .b3-cats button{font-weight:600}
+
+/* v34 roof panel */
+.b3-roof-panel{width:300px;padding:10px 12px;border:1px solid #ffffff2b;border-radius:12px;background:#141b19ee;color:#fff;box-shadow:0 10px 26px #0006;display:flex;flex-direction:column;gap:5px;max-height:min(70vh,560px);overflow:auto}
+.b3-roof-panel.hidden{display:none}
+.b3-roof-head{display:flex;justify-content:space-between;align-items:center}
+.b3-roof-head b{font-size:13px}
+.b3-roof-panel label{font-size:10px;color:#f2c776;margin-top:3px}
+.b3-roof-row{display:flex;flex-wrap:wrap;gap:4px}
+.b3-side .b3-roof-panel button{padding:5px 8px;font-size:11px}
+.b3-roof-mat{display:flex;align-items:center;gap:5px}
+.b3-roof-mat img{width:20px;height:20px;border-radius:4px}
+.b3-roof-panel small{font-size:10px;color:#ffffffa0;line-height:1.4;margin-top:4px;white-space:normal}
+@media (max-width:900px){.b3-roof-panel{width:min(300px,calc(100vw - 16px))}}
