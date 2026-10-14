@@ -802,8 +802,8 @@ const B3A = (() => {
       const h = height, jamb = 0.05, lh = h - jamb - 0.01, inner = w - 2 * jamb;
       if (style === 'hakidashi') {            // 掃き出し窓: full-height aluminium sliding window
         frame(alu, h, 0.045); part(g, box(w, 0.04, t), alu, 0, 0.02, 0);
-        const sw = inner / 2 + 0.02;
-        for (const [x, z] of [[-sw / 2 + 0.01, -0.02], [sw / 2 - 0.01, 0.02]]) {
+        const n = Math.max(2, Math.round(w / 0.9)), sw = inner / n + 0.02;   // 2 panes per 1.8m (4 panes = 3.6m ...)
+        for (const [x, z] of Array.from({ length: n }, (_, i) => [-inner / 2 + sw / 2 + i * (inner - sw) / (n - 1), i % 2 ? 0.02 : -0.02])) {
           part(g, box(sw, 0.04, 0.035), alu, x, h - 0.07, z); part(g, box(sw, 0.04, 0.035), alu, x, 0.06, z);
           part(g, box(0.04, lh - 0.06, 0.035), alu, x - sw / 2 + 0.02, (lh) / 2 + 0.03, z); part(g, box(0.04, lh - 0.06, 0.035), alu, x + sw / 2 - 0.02, lh / 2 + 0.03, z);
           pane(sw - 0.08, lh - 0.12, x, lh / 2 + 0.03, z);

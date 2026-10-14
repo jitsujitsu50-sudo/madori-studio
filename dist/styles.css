@@ -183,3 +183,11 @@
 .toast{z-index:500}
 body:has(.builder3d-modal:not(.hidden)) .toast{bottom:auto;top:84px}
 @media (max-width:900px){.b3-top-actions button{padding:7px 9px;font-size:11px}}
+
+/* v36 free 2D view: no flex centring clip, grab cursor */
+.canvas-wrap{justify-content:flex-start;align-items:flex-start}
+.canvas-wrap>.floor-canvas{margin:auto}
+.canvas-wrap.grab-ready{cursor:grab}
+.canvas-wrap.grabbing,.canvas-wrap.grabbing *{cursor:grabbing!important}
+#b3Palette [data-win]{display:flex;flex-direction:column;align-items:center;line-height:1.2}
+#b3Palette [data-win] small{opacity:.65;font-size:9px}

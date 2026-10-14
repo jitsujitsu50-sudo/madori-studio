@@ -24,8 +24,12 @@ const OPENINGS = {
   fixed: { type: 'fixed-window', name: 'FIX窓', w: 1.2 },
   small: { type: 'window', style: 'small', name: '小窓', w: 0.6 },
   hakidashi: { type: 'sliding-door', style: 'hakidashi', name: '掃き出し窓', w: 1.8 },
+  hakidashi27: { type: 'sliding-door', style: 'hakidashi', name: '掃き出し窓 2.7m', w: 2.7 },
+  hakidashi36: { type: 'sliding-door', style: 'hakidashi', name: '掃き出し窓 3.6m', w: 3.6 },
+  hakidashi54: { type: 'sliding-door', style: 'hakidashi', name: '掃き出し窓 5.4m', w: 5.4 },
+  hakidashi72: { type: 'sliding-door', style: 'hakidashi', name: '掃き出し窓 7.2m', w: 7.2 },
 };
-const DOOR_KEYS = ['door', 'double', 'entrance', 'glassdoor', 'sliding', 'slidingDouble', 'folding'], WINDOW_KEYS = ['window', 'fixed', 'small', 'hakidashi'];
+const DOOR_KEYS = ['door', 'double', 'entrance', 'glassdoor', 'sliding', 'slidingDouble', 'folding'], WINDOW_KEYS = ['window', 'fixed', 'small', 'hakidashi', 'hakidashi27', 'hakidashi36', 'hakidashi54', 'hakidashi72'];
 const isDeck = t => t.mat === 'deck';
 const isOutdoor = t => !!(B3A.FLOORS[t.mat] && B3A.FLOORS[t.mat].outdoor);   // deck, grass, gravel, concrete: no walls of their own
 // Room stamp presets: typical size (畳) and floor material
@@ -57,7 +61,7 @@ const HINTS = {
   room: '畳数を選んでクリックで部屋を配置（[ ]で奥行き変更・畳数はそのまま／Rで回転）',
   add: 'ドラッグで床を塗る（バルコニー床は手すり付き。同じ場所なら張り替え）', remove: 'ドラッグで床を消す', wall: '壁をクリックで撤去・空いた辺をクリックで追加（「1マスずつ」はなぞって部分的に）',
   door: '壁の辺をクリックして扉を設置（7種類）', window: '壁の辺をクリックして窓を設置（掃き出し窓はバルコニーへの出入りに）', furniture: '種類→タイプを選んでクリックで置く（Rで回転。壁掛けテレビは壁に付きます）。置いた家具は「移動」で選ぶと種類を変更できます',
-  paint: '壁をクリック／なぞって色を塗る', move: '部屋・家具・建具をドラッグで移動（部屋を選ぶと取っ手でサイズ変更）／空き地ドラッグで視点回転', walk: 'WASD・矢印で移動／ドラッグで見回す／Escで終了',
+  paint: '壁をクリック／なぞって色を塗る', move: '部屋・家具・建具をドラッグで移動（部屋を選ぶと取っ手でサイズ変更）／空き地ドラッグで画面を動かす・Shift＋ドラッグ／右ドラッグで回転・ホイールでカーソル位置にズーム・ダブルクリックでそこを中心に', walk: 'WASD・矢印で移動／ドラッグで見回す／Escで終了',
 };
 
 // ---------------- shared data helpers ----------------
@@ -706,6 +710,29 @@ function b3ContentBox() {
   if (!pts.length) { const cx = canvas.clientWidth / PX / 2, cz = canvas.clientHeight / PX / 2; return { minX: cx - 4, maxX: cx + 4, minZ: cz - 4, maxZ: cz + 4 }; }
   return { minX: Math.min(...pts.map(p => p[0])), maxX: Math.max(...pts.map(p => p[0])), minZ: Math.min(...pts.map(p => p[1])), maxZ: Math.max(...pts.map(p => p[1])) };
 }
+// pan the view so the ground follows the pointer (dx, dy in screen px from where the drag started)
+function b3PanBy(from, dx, dy) {
+  const k = B3.dist * 2 * Math.tan(20 * Math.PI / 180) / Math.max(1, builderCanvas.clientHeight), f = new THREE.Vector3(-Math.sin(B3.yaw), 0, -Math.cos(B3.yaw)), r = new THREE.Vector3(-f.z, 0, f.x);
+  B3.target.copy(from).addScaledVector(r, -dx * k).addScaledVector(f, dy * k / Math.max(0.35, Math.sin(B3.pitch)));
+  const PW = canvas.clientWidth / PX, PH = canvas.clientHeight / PX; B3.target.x = Math.min(PW + 10, Math.max(-10, B3.target.x)); B3.target.z = Math.min(PH + 10, Math.max(-10, B3.target.z));
+}
+// exact grab-pan: the ground point that was under (x0,y0) ends up under (x1,y1)
+function b3PanExact(from, x0, y0, x1, y1) {
+  B3.target.copy(from); const a = b3Ground({ clientX: x0, clientY: y0 }), b = b3Ground({ clientX: x1, clientY: y1 });
+  if (a && b) { B3.target.x += a.x - b.x; B3.target.z += a.z - b.z; }
+  const PW = canvas.clientWidth / PX, PH = canvas.clientHeight / PX; B3.target.x = Math.min(PW + 10, Math.max(-10, B3.target.x)); B3.target.z = Math.min(PH + 10, Math.max(-10, B3.target.z));
+}
+function b3FocusAt(e) {   // smoothly move the view centre to the ground point under the pointer
+  const g = b3Ground(e); if (!g) return; const from = B3.target.clone(), to = new THREE.Vector3(g.x, 0, g.z), t0 = performance.now();
+  const step = now => { const k = Math.min(1, (now - t0) / 250), s = k * (2 - k); B3.target.lerpVectors(from, to, s); b3Draw(); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+// zoom so the ground point under the pointer stays under it
+function b3ZoomAt(dist, e) {
+  const g = e && b3Ground(e), d0 = B3.dist; B3.dist = Math.min(260, Math.max(2.5, dist));
+  if (g) { const t = 1 - B3.dist / d0; B3.target.x += (g.x - B3.target.x) * t; B3.target.z += (g.z - B3.target.z) * t; }
+  b3Draw();
+}
 function b3Fit() {
   const b = b3ContentBox(), r = Math.max(3, Math.hypot(b.maxX - b.minX, b.maxZ - b.minZ) / 2 + wallHeightCm / 200), aspect = b3camera ? b3camera.aspect : 1.5, fov = 40 * Math.PI / 180, fit = r / Math.sin(Math.min(fov / 2, Math.atan(Math.tan(fov / 2) * aspect)));
   B3.target.set((b.minX + b.maxX) / 2, 0, (b.minZ + b.maxZ) / 2); B3.dist = Math.min(260, Math.max(4, fit * 1.2)); b3Draw();
@@ -858,8 +885,16 @@ function openingDims(key) {
   const o = OPENINGS[key], w = o.w * PX, h = o.type === 'door' ? (o.style === 'double' ? w / 2 : w) : o.type === 'sliding-door' ? 0.12 * PX : 0.1 * PX;
   return { ...o, w, h };
 }
+// keep an opening of width w (plan px) on the straight wall that contains edge e: returns the centre along the wall
+function fitOnWall(e, center, w) {
+  const size = gridPx(), { visible } = visibleAutoEdges(normalizedTiles()); if (!visible.has(edgeKey(e.k, e.gx, e.gy, size))) return { c: center, fits: true };
+  const run = wallRunKeys(e, new Set(visible.keys())).map(parseEdgeKey), lo = Math.min(...run.map(c => e.k === 'h' ? c.gx : c.gy)) * size, hi = (Math.max(...run.map(c => e.k === 'h' ? c.gx : c.gy)) + 1) * size;
+  if (w > hi - lo + 1) { toast(`窓・ドア（${(w / PX).toFixed(1)}m）がこの壁（${((hi - lo) / PX).toFixed(1)}m）より長いため、はみ出しています`); return { c: center, fits: false }; }
+  return { c: Math.min(hi - w / 2, Math.max(lo + w / 2, center)), fits: true };
+}
 function b3PlaceOpening(e) {
-  const size = gridPx(), [a, b] = edgePoints(e, size), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+  const size = gridPx(), [a, b] = edgePoints(e, size); let mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+  { const w0 = openingDims(B3.tool === 'door' ? B3.doorType : B3.winType).w, f = fitOnWall(e, e.k === 'h' ? mx : my, w0); if (e.k === 'h') mx = f.c; else my = f.c; }
   const indoor = new Set(floorTiles.filter(t => t.size === size && !isOutdoor(t)).map(t => `${Math.round(t.x / size)}:${Math.round(t.y / size)}`));
   const key = B3.tool === 'door' ? B3.doorType : B3.winType, o = openingDims(key); let rot = e.k === 'h' ? 0 : 90;
   if (o.type === 'door') { if (e.k === 'h') rot = indoor.has(`${e.gx}:${e.gy}`) ? 180 : 0; else rot = indoor.has(`${e.gx}:${e.gy}`) ? 90 : 270; }  // swing into the room
@@ -883,7 +918,9 @@ function b3UpdateSelection() {
   if (room) { $('b3LockJo').textContent = i.tatami ? '畳数固定 ON' : '畳数固定 OFF'; $('b3LockJo').classList.toggle('active', !!i.tatami); }
   const furn = i.type === 'furniture', vs = $('b3Variant'), n = furn ? B3A.catalogIndex(i) : -1; vs.classList.toggle('hidden', n < 0);
   if (n >= 0) { const cat = B3A.CATALOG[n].cat, sig = i.id + ':' + n; if (vs.dataset.sig !== sig) { vs.innerHTML = `<optgroup label="${cat}の種類">${B3A.CATALOG.map((c, m) => c.cat === cat ? `<option value="${m}"${m === n ? ' selected' : ''}>${c.name}（${c.w}×${c.d}m）</option>` : '').join('')}</optgroup>`; vs.dataset.sig = sig; } }
-  $('b3SelHint').textContent = room ? 'ドラッグで移動・オレンジの取っ手でサイズ変更' : n >= 0 ? 'ドラッグで移動・左の▼で種類を変更' : '';
+  const opKey = isOpening(i) ? openingKeyOf(i) : null;
+  if (opKey) { const keys = DOOR_KEYS.includes(opKey) ? DOOR_KEYS : WINDOW_KEYS, sig = i.id + ':' + opKey; vs.classList.remove('hidden'); if (vs.dataset.sig !== sig) { vs.innerHTML = `<optgroup label="${keys === DOOR_KEYS ? 'ドア' : '窓'}の種類・大きさ">${keys.map(k => `<option value="op:${k}"${k === opKey ? ' selected' : ''}>${OPENINGS[k].name}（${OPENINGS[k].w}m）</option>`).join('')}</optgroup>`; vs.dataset.sig = sig; } }
+  $('b3SelHint').textContent = room ? 'ドラッグで移動・オレンジの取っ手でサイズ変更' : n >= 0 || opKey ? 'ドラッグで移動・左の▼で種類を変更' : '';
 }
 function b3UpdateStatus() {
   const area = floorTiles.filter(t => !isOutdoor(t)).reduce((a, t) => a + (t.size / PX) ** 2, 0), outA = {};
@@ -921,7 +958,7 @@ function b3RenderPalette() {
   }
   else if (t === 'wall') html = `<button data-wmode="run" class="${B3.wallMode === 'run' ? 'active' : ''}"><span>壁1面ごと</span></button><button data-wmode="cell" class="${B3.wallMode !== 'run' ? 'active' : ''}"><span>1マスずつ（なぞる）</span></button><em class="b3-pal-note">赤く光った壁をクリックで撤去／消した所をクリックで復活</em>`;
   else if (t === 'door') html = DOOR_KEYS.map(k => `<button data-door="${k}" class="${k === B3.doorType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
-  else if (t === 'window') html = WINDOW_KEYS.map(k => `<button data-win="${k}" class="${k === B3.winType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
+  else if (t === 'window') html = WINDOW_KEYS.map(k => `<button data-win="${k}" class="${k === B3.winType ? 'active' : ''}"><span>${OPENINGS[k].name.replace(/ [\d.]+m$/, '')}</span><small>${OPENINGS[k].w}m${OPENINGS[k].style === 'hakidashi' ? '・' + Math.max(2, Math.round(OPENINGS[k].w / 0.9)) + '枚' : ''}</small></button>`).join('');
   p.innerHTML = html; p.classList.toggle('hidden', !html); p.classList.toggle('b3-palette-side', t === 'room' || t === 'furniture');
   p.querySelectorAll('[data-rtype]').forEach(b => b.onclick = () => { B3.roomType = +b.dataset.rtype; B3.roomJo = ROOM_TYPES[B3.roomType].jo; B3.roomShape = null; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-jo]').forEach(b => b.onclick = () => { B3.roomJo = +b.dataset.jo; B3.roomShape = null; b3ghostKey = ''; b3RenderPalette(); });
@@ -995,6 +1032,10 @@ function b3PointerDown(e) {
   if (!b3renderer) return;
   try { builderCanvas.setPointerCapture(e.pointerId); } catch {}
   B3.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (!B3.walk.on && B3.tool === 'move' && e.button === 0) {
+    const t = performance.now(), L = B3.lastDown; B3.lastDown = { t, x: e.clientX, y: e.clientY };
+    if (L && t - L.t < 350 && Math.hypot(e.clientX - L.x, e.clientY - L.y) < 8 && B3.pointers.size === 1) { B3.lastDown = null; b3FocusAt(e); return; }
+  }
   if (B3.walk.on) {
     const r = builderCanvas.getBoundingClientRect();
     if (e.pointerType === 'touch' && e.clientX - r.left < r.width / 2 && !B3.walk.joy) { B3.walk.joy = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; const j = $('b3Joystick'); j.style.left = e.clientX - r.left - 50 + 'px'; j.style.top = e.clientY - r.top - 50 + 'px'; j.classList.remove('hidden'); }
@@ -1005,7 +1046,7 @@ function b3PointerDown(e) {
     B3.tap = null; const st = B3.stroke;
     if (st && e.pointerType === 'touch' && performance.now() - st.t0 < 350 && st.saved && history.length) { B3.stroke = null; restoreState(history.pop()); render(); } else b3EndStroke();
     B3.dragItem = null; const [p, q] = [...B3.pointers.values()];
-    B3.pinch = { d: Math.hypot(p.x - q.x, p.y - q.y), mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2, dist: B3.dist, yaw: B3.yaw, pitch: B3.pitch }; B3.orbit = null; b3UpdateGhost(); return;
+    B3.pinch = { d: Math.hypot(p.x - q.x, p.y - q.y), a: Math.atan2(q.y - p.y, q.x - p.x), mx: (p.x + q.x) / 2, my: (p.y + q.y) / 2, dist: B3.dist, yaw: B3.yaw, pitch: B3.pitch, target: B3.target.clone() }; B3.orbit = null; b3UpdateGhost(); return;
   }
   if (B3.pointers.size > 2) return;
   if (e.button === 2 || e.button === 1 || e.altKey) { B3.orbit = { x: e.clientX, y: e.clientY, yaw: B3.yaw, pitch: B3.pitch, pan: e.shiftKey || e.button === 1, target: B3.target.clone() }; b3UpdateGhost(); return; }
@@ -1032,7 +1073,7 @@ function b3PointerDown(e) {
     if (hit) { const it = items.find(i => i.id === hit.object.userData.itemId), g = b3Ground(e); b3Select(it.id); if (g) B3.dragItem = { id: it.id, sx: g.x, sz: g.z, ox: it.x, oy: it.y, moved: false }; return; }
     const room = g0 && roomAt(g0);
     if (room) { if (B3.selectedId !== room.id) b3Select(room.id); startRoomDrag(room, 'move', null, g0); return; }
-    b3Select(null); B3.orbit = { x: e.clientX, y: e.clientY, yaw: B3.yaw, pitch: B3.pitch, pan: e.shiftKey, target: B3.target.clone() };
+    b3Select(null); B3.orbit = { x: e.clientX, y: e.clientY, yaw: B3.yaw, pitch: B3.pitch, pan: e.pointerType === 'mouse' && !e.shiftKey, target: B3.target.clone() };
   }
 }
 function b3PointerMove(e) {
@@ -1046,12 +1087,13 @@ function b3PointerMove(e) {
   }
   if (B3.pinch && B3.pointers.size >= 2) {
     const [p, q] = [...B3.pointers.values()], d = Math.hypot(p.x - q.x, p.y - q.y), mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-    B3.dist = Math.min(260, Math.max(2.5, B3.pinch.dist * B3.pinch.d / Math.max(20, d))); B3.yaw = B3.pinch.yaw - (mx - B3.pinch.mx) * 0.008; B3.pitch = Math.min(1.45, Math.max(0.2, B3.pinch.pitch + (my - B3.pinch.my) * 0.006)); b3Draw(); return;
+    const P0 = B3.pinch; B3.dist = Math.min(260, Math.max(2.5, P0.dist * P0.d / Math.max(20, d))); B3.yaw = P0.yaw + (Math.atan2(q.y - p.y, q.x - p.x) - P0.a);
+    b3PanExact(P0.target, P0.mx, P0.my, mx, my); b3Draw(); return;
   }
   if (B3.tap && Math.hypot(e.clientX - B3.tap.x, e.clientY - B3.tap.y) >= 12) { B3.orbit = { x: B3.tap.x, y: B3.tap.y, yaw: B3.yaw, pitch: B3.pitch, pan: false, target: B3.target.clone() }; B3.tap = null; }
   if (B3.orbit) {
     const o = B3.orbit, dx = e.clientX - o.x, dy = e.clientY - o.y;
-    if (o.pan) { const k = B3.dist * 0.0016, f = new THREE.Vector3(Math.sin(B3.yaw), 0, Math.cos(B3.yaw)), r = new THREE.Vector3(f.z, 0, -f.x); B3.target.copy(o.target).addScaledVector(r, -dx * k).addScaledVector(f, -dy * k); }
+    if (o.pan) b3PanExact(o.target, o.x, o.y, e.clientX, e.clientY);
     else { B3.yaw = o.yaw - dx * 0.008; B3.pitch = Math.min(1.45, Math.max(0.2, o.pitch + dy * 0.006)); }
     b3Draw(); return;
   }
@@ -1113,7 +1155,7 @@ function b3PointerUp(e) {
 builderCanvas.addEventListener('pointerdown', b3PointerDown); builderCanvas.addEventListener('pointermove', b3PointerMove); builderCanvas.addEventListener('pointerup', b3PointerUp); builderCanvas.addEventListener('pointercancel', b3PointerUp);
 builderCanvas.addEventListener('pointerleave', () => { if (!B3.pointers.size) { B3.hover = null; b3UpdateGhost(); b3Draw(); } });
 builderCanvas.addEventListener('contextmenu', e => e.preventDefault());
-builderCanvas.addEventListener('wheel', e => { e.preventDefault(); if (B3.walk.on) return; B3.dist = Math.min(260, Math.max(2.5, B3.dist * Math.exp(e.deltaY * 0.0012))); b3Draw(); }, { passive: false });
+builderCanvas.addEventListener('wheel', e => { e.preventDefault(); if (B3.walk.on) return; b3ZoomAt(B3.dist * Math.exp(e.deltaY * (e.ctrlKey ? 0.01 : 0.0012)), e); }, { passive: false });
 
 function b3AnimateYaw(delta) { const from = B3.yaw, to = from + delta, t0 = performance.now(); const step = now => { const t = Math.min(1, (now - t0) / 260), k = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2; B3.yaw = from + (to - from) * k; b3Draw(); if (t < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
 
@@ -1143,7 +1185,20 @@ $('b3UndoBtn').onclick = () => $('undoBtn').click();
 $('b3ExitWalk').onclick = () => b3StopWalk();
 function b3UpdateSound() { const m = B3A.isMuted(); $('b3SoundBtn').textContent = m ? '🔇' : '🔊'; $('b3SoundBtn').title = m ? '効果音オフ' : '効果音オン'; }
 $('b3SoundBtn').onclick = () => { B3A.setMuted(!B3A.isMuted()); b3UpdateSound(); B3A.sound('select'); };
+function openingKeyOf(i) {
+  const st = i.style || '', same = Object.keys(OPENINGS).filter(k => OPENINGS[k].type === i.type && (OPENINGS[k].style || '') === st);
+  return same.sort((x, y) => Math.abs(OPENINGS[x].w * PX - i.w) - Math.abs(OPENINGS[y].w * PX - i.w))[0] || null;
+}
+function changeOpening(i, key) {   // keep the wall-line centre and the facing, swap kind / width
+  const sp = openingSpec(i), o = openingDims(key), r = (i.rotation || 0) * Math.PI / 180, lift = o.type === 'door' ? o.h / 2 : 0, size = gridPx();
+  let wx = sp.x * PX, wz = sp.z * PX; const horiz = Math.abs(sp.ux) > 0.5, e = horiz ? { k: 'h', gx: Math.floor(wx / size), gy: Math.round(wz / size) } : { k: 'v', gx: Math.round(wx / size), gy: Math.floor(wz / size) };
+  const f = fitOnWall(e, horiz ? wx : wz, o.w); if (horiz) wx = f.c; else wz = f.c;
+  const cx = wx + Math.sin(r) * lift, cy = wz - Math.cos(r) * lift;
+  checkpoint(); Object.assign(i, { type: o.type, name: o.name, w: o.w, h: o.h, x: cx - o.w / 2, y: cy - o.h / 2 }); if (o.style) i.style = o.style; else delete i.style;
+  B3.pop.set(i.id, performance.now()); render(); scheduleSave(); B3A.sound('place'); toast(`${o.name}（${OPENINGS[key].w}m）に変更しました`);
+}
 $('b3Variant').onchange = () => {
+  { const v = $('b3Variant').value, i = items.find(x => x.id === B3.selectedId); if (v.startsWith('op:')) { if (i) changeOpening(i, v.slice(3)); $('b3Variant').blur(); return; } }
   const i = items.find(x => x.id === B3.selectedId), c = B3A.CATALOG[+$('b3Variant').value]; if (!i || i.type !== 'furniture' || !c) return;
   checkpoint(); const cx = i.x + i.w / 2, cy = i.y + i.h / 2; i.w = c.w * PX; i.h = c.d * PX; i.x = cx - i.w / 2; i.y = cy - i.h / 2; i.name = c.name; i.variant = c.v;
   B3.pop.set(i.id, performance.now()); render(); scheduleSave(); B3A.sound('place'); toast(`${c.name}に変更しました`); $('b3Variant').blur();
@@ -1167,6 +1222,12 @@ window.addEventListener('keydown', e => {
   else if ((key === '[' || key === ']') && B3.tool === 'room') b3RoomDepth(key === ']' ? 1 : -1);
   else if (key === 'r') { if (B3.tool === 'furniture' || B3.tool === 'room') { B3.ghostRot = (B3.ghostRot + 90) % 360; b3ghostKey = ''; if (B3.tool === 'room') b3RenderPalette(); b3UpdateGhost(); b3Draw(); } else if (B3.selectedId) $('b3RotateItem').click(); }
   else if (key === 't') { if (roofCfg().type === 'none') { B3.roofPanel = true; b3RenderRoofPanel(); } else setRoof({ show: !roofCfg().show }); }
+  else if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
+    e.preventDefault(); const st = 60, m = { arrowup: [0, st], w: [0, st], arrowdown: [0, -st], s: [0, -st], arrowleft: [st, 0], a: [st, 0], arrowright: [-st, 0], d: [-st, 0] }[key];
+    b3PanBy(B3.target.clone(), m[0], m[1]); b3Draw();
+  }
+  else if (key === '+' || key === '=' || key === ';') b3ZoomAt(B3.dist / 1.2);
+  else if (key === '-') b3ZoomAt(B3.dist * 1.2);
   else if (key === 'q') $('rotateBuilderLeft').click();
   else if (key === 'e') $('rotateBuilderRight').click();
 }, true);
