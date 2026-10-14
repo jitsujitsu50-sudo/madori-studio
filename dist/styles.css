@@ -176,3 +176,10 @@
 .b3-roof-mat img{width:20px;height:20px;border-radius:4px}
 .b3-roof-panel small{font-size:10px;color:#ffffffa0;line-height:1.4;margin-top:4px;white-space:normal}
 @media (max-width:900px){.b3-roof-panel{width:min(300px,calc(100vw - 16px))}}
+
+/* v35 3D as the main screen */
+.b3-top-actions{display:flex;gap:8px;pointer-events:auto}
+#plansModal{z-index:450}
+.toast{z-index:500}
+body:has(.builder3d-modal:not(.hidden)) .toast{bottom:auto;top:84px}
+@media (max-width:900px){.b3-top-actions button{padding:7px 9px;font-size:11px}}

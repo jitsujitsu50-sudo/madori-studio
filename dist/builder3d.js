@@ -1133,8 +1133,8 @@ function shape2dFurniture() {
 render = function () { renderBefore3d(); shape2dFurniture(); if (B3.roofPanel && b3Open()) b3RenderRoofPanel(); if (B3.selectedId && !items.some(i => i.id === B3.selectedId)) B3.selectedId = null; if (b3Open()) { b3UpdateSelection(); b3MarkDirty(); } };
 shape2dFurniture();   // the first 2D render ran before this file loaded
 
-$('builder3dBtn').onclick = () => { $('builder3dModal').classList.remove('hidden'); B3.fitted = false; B3.selectedId = null; b3RenderHotbar(); b3RenderPalette(); b3UpdateSelection(); b3UpdateSound(); requestAnimationFrame(resizeBuilder); };
-$('closeBuilder3dBtn').onclick = () => { b3EndStroke(); if (B3.walk.on) b3StopWalk(); $('builder3dModal').classList.add('hidden'); B3.selectedId = null; render(); toast('3D編集を間取り図へ反映しました'); };
+$('builder3dBtn').onclick = () => { $('builder3dModal').classList.remove('hidden'); try { if (location.hash === '#2d') window.history.replaceState(null, '', location.pathname + location.search); } catch {} B3.fitted = false; B3.selectedId = null; b3RenderHotbar(); b3RenderPalette(); b3UpdateSelection(); b3UpdateSound(); requestAnimationFrame(resizeBuilder); };
+$('closeBuilder3dBtn').onclick = () => { b3EndStroke(); if (B3.walk.on) b3StopWalk(); $('builder3dModal').classList.add('hidden'); B3.selectedId = null; render(); try { window.history.replaceState(null, '', '#2d'); } catch {} toast('2Dの間取り図です（右上の「3D編集へ」で3Dに戻ります）'); };
 $('wallHeight').oninput = e => { wallHeightCm = +e.target.value; $('wallHeightLabel').textContent = wallHeightCm + 'cm'; try { localStorage.setItem('madori-wall-height', wallHeightCm); } catch {} b3MarkDirty(); };
 $('rotateBuilderLeft').onclick = () => b3AnimateYaw(-Math.PI / 2); $('rotateBuilderRight').onclick = () => b3AnimateYaw(Math.PI / 2);
 $('fitBuilderBtn').onclick = () => b3Fit();
@@ -1162,7 +1162,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   if ((key === 'delete' || key === 'backspace') && selectedRoom()) { e.preventDefault(); e.stopImmediatePropagation(); deleteRoom(selectedRoom()); return; }
-  if (key === 'escape') $('closeBuilder3dBtn').click();
+  if (key === 'escape') { if (B3.roofPanel) { B3.roofPanel = false; b3RenderRoofPanel(); b3MarkDirty(); } else if (B3.selectedId) b3Select(null); }   // 3D is the main screen: Esc no longer leaves it
   else if (/^[0-9]$/.test(key)) { const t = TOOLS[(+key + 9) % 10]; if (t) b3SetTool(t[0]); }
   else if ((key === '[' || key === ']') && B3.tool === 'room') b3RoomDepth(key === ']' ? 1 : -1);
   else if (key === 'r') { if (B3.tool === 'furniture' || B3.tool === 'room') { B3.ghostRot = (B3.ghostRot + 90) % 360; b3ghostKey = ''; if (B3.tool === 'room') b3RenderPalette(); b3UpdateGhost(); b3Draw(); } else if (B3.selectedId) $('b3RotateItem').click(); }
@@ -1181,3 +1181,7 @@ $('roomsTo3dBtn').onclick = () => {
 try { wallHeightCm = +(localStorage.getItem('madori-wall-height') || 240) || 240; } catch {}
 $('wallHeight').value = wallHeightCm; $('wallHeightLabel').textContent = wallHeightCm + 'cm';
 window.addEventListener('resize', () => { if (b3Open()) resizeBuilder(); });
+
+// 3D is the main screen: open the builder on load (the 2D plan stays one click away; #2d in the URL opens 2D)
+$('b3PlansBtn').onclick = () => $('plansBtn').click();
+if (location.hash !== '#2d') requestAnimationFrame(() => $('builder3dBtn').click());

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=34">
+  <link rel="stylesheet" href="styles.css?v=35">
 </head>
 <body>
   <header class="topbar">
@@ -16,7 +16,7 @@
       <button class="ghost" id="saveBtn">保存</button>
       <button class="ghost" id="importBtn">間取り画像を読込</button>
       <input id="planImageInput" type="file" accept="image/*" hidden>
-      <button class="builder-launch" id="builder3dBtn">3Dでつくる</button>
+      <button class="builder-launch" id="builder3dBtn">3D編集へ</button>
       <button class="walkthrough" id="view3dBtn">室内を見る</button>
       <button class="primary" id="exportBtn">PNGを書き出す</button>
     </div>
@@ -115,7 +115,7 @@
   </div>
   <div id="builder3dModal" class="builder3d-modal hidden" role="dialog" aria-modal="true" aria-labelledby="builder3dTitle">
     <canvas id="builder3dCanvas" width="1280" height="760" aria-label="3Dルームビルダー"></canvas>
-    <div class="builder3d-topbar"><div><p>ROOM BUILDER</p><h2 id="builder3dTitle">3Dで部屋をつくる</h2></div><button id="closeBuilder3dBtn">間取り図へ戻る</button></div>
+    <div class="builder3d-topbar"><div><p>ROOM BUILDER</p><h2 id="builder3dTitle">3Dで部屋をつくる</h2></div><div class="b3-top-actions"><button id="b3PlansBtn" title="名前を付けて保存・プランの切り替え・ファイル書き出し">💾 保存・プラン</button><button id="closeBuilder3dBtn" title="2Dの間取り図で確認・印刷用の書き出し">2D間取り図</button></div></div>
     <div class="b3-side" aria-label="表示の設定">
       <div id="b3RoofPanel" class="b3-roof-panel hidden"></div>
       <label class="b3-height">壁の高さ <input id="wallHeight" type="range" min="180" max="360" step="10" value="240"><output id="wallHeightLabel">240cm</output></label>
@@ -180,11 +180,11 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=34"></script>
-  <script src="tatami.js?v=34"></script>
-  <script src="plans.js?v=34"></script>
+  <script src="app.js?v=35"></script>
+  <script src="tatami.js?v=35"></script>
+  <script src="plans.js?v=35"></script>
   <script src="vendor/three.min.js?v=0.160.1"></script>
-  <script src="b3assets.js?v=34"></script>
-  <script src="builder3d.js?v=34"></script>
+  <script src="b3assets.js?v=35"></script>
+  <script src="builder3d.js?v=35"></script>
 </body>
 </html>
