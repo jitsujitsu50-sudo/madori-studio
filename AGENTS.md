@@ -18,9 +18,10 @@
 
 ## 構成
 - 静的サイト。ビルド不要。公開対象は `dist/` のみ。
-- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v29）。
+- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v30）。
 - `dist/app.js` — 2D間取り編集。`items`（部屋・壁・建具・家具）と `floorTiles` を管理。
 - `dist/tatami.js` — 2D の畳数指定（部屋追加時の畳数、プロパティの畳数・畳数固定、リサイズ時の面積維持）。`app.js` の直後に読み込み、`updateInspector`/`smartResize`/プロパティ入力を上書きする。
+- `dist/plans.js` — プラン管理（複数プランの保存・切替・複製・名前変更・削除、ファイル書き出し/読み込み）。`tatami.js` の後に読み込み、`save` を上書きして編集中プランの控えを更新する。
 - `dist/builder3d.js` — 3Dルームビルダー（three.js / WebGL）。編集ツール・ホットバー（1〜9・0キー：部屋/床/消す/壁/ドア/窓/家具/塗る/移動/歩く）・ゴースト表示・部屋ラベル・ウォークモード。
 - `dist/b3assets.js` — 3D素材（手続き生成テクスチャ、環境光、家具/建具モデル、効果音）。`builder3d.js` より先に読み込む。
 - `dist/vendor/three.min.js` — three.js r160.1（同梱。外部CDN不使用）。
@@ -29,6 +30,8 @@
 ## データ設計（壊さないこと）
 - localStorage `madori-data`: `{items, floorTiles, hiddenEdges, wallPaint, name, grid, tatami, dataVersion}`
   - 項目の追加は「後方互換で追加のみ」。古いデータ（hiddenEdges なし）も読めること。
+- localStorage `madori-plans`: プラン一覧 `[{id,name,data(=madori-dataと同じJSON文字列),wallHeight,createdAt,updatedAt}]`。`madori-current-plan`: 編集中プランのid。編集中のデータ本体は従来どおり `madori-data`。プランを開くと `madori-data` に書き込んで再読み込みする。
+- 書き出しファイル `*.madori.json`: `{format:'madori-studio-plan',version:1,name,wallHeight,data:{…madori-dataと同じ…}}`。
 - localStorage `madori-wall-height`: 壁高(cm)。`madori-underlay`: 下絵画像。`madori-sound`: 効果音 on/off。
 - 座標は plan px（`PX=80` px = 1m）。3D は meter 単位（plan px / PX）。plan x → 3D X, plan y → 3D Z。
 - `floorTiles` は 2D/3D 共有。3D 床はグリッド座標 `gx = round(x/size)` に正規化。
@@ -41,13 +44,14 @@
 - ドア・窓は 2D の opening アイテム（door は item の下辺が壁線）。3D の見た目の種類は追加フィールド `style`：door=両開き`double`/玄関`entrance`/ガラス`glass`、sliding-door=片引き`single`/引き違い`double`/折れ戸`folding`/掃き出し窓`hakidashi`、window=小窓`small`。一覧は `builder3d.js` の `OPENINGS`。
 
 ## 変更後の確認（必須）
-1. `node --check dist/app.js && node --check dist/tatami.js && node --check dist/b3assets.js && node --check dist/builder3d.js`
+1. `node --check dist/app.js && node --check dist/tatami.js && node --check dist/plans.js && node --check dist/b3assets.js && node --check dist/builder3d.js`
 2. 実ブラウザで操作確認（3D: 床ドラッグ・壁・ドア/窓・家具移動・視点、2D同期、リロード後の保存）
 3. index.html のバージョン番号を上げてコミット → `main` に push
 
 ## 履歴メモ
 - v25: Sites 公開済み（canvas 2D のアイソメ表示）
 - v26: three.js 化、床ドラッグ塗り、3D壁編集、ドア/窓、家具移動、カメラ回転/ズーム、タッチ対応
+- v30: プラン管理（名前を付けて保存・一覧から開く・複製・名前変更・削除・新規）、ファイル書き出し/読み込み（別端末への移動・バックアップ）
 - v29: 畳数で部屋を作成（2D: 広さ選択・畳数固定、3D: 部屋ツール＝12種のプリセット×1〜24畳、奥行き変更で畳数維持）、3D部屋ラベル、延床の坪数と規模の目安、タッチは「タップで配置」に変更
 - v28: バルコニー（デッキ床＋手すり）、扉7種・窓4種（掃き出し窓で出入り可）、浴槽・トイレ・洗面台・洗濯機・冷蔵庫
 - v27: ゲーム風UI（ホットバー1〜9キー、ゴースト表示、ポップ演出、効果音）、床材テクスチャ、壁塗り、幅木、建具部分の壁くり抜き、詳細な家具モデル、一人称ウォークモード（衝突判定・タッチスティック）

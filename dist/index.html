@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=29">
+  <link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
   <header class="topbar">
@@ -27,6 +27,7 @@
       <section>
         <p class="eyebrow">プロジェクト</p>
         <input id="projectName" class="project-name" value="わが家のプラン A" aria-label="プロジェクト名">
+        <button id="plansBtn" class="plans-btn">保存・プラン一覧<small>名前を付けて保存／ファイル書き出し</small></button>
         <button id="autoPlanBtn" class="auto-plan-btn">✦ 条件から自動作成</button>
         <button id="importSidebarBtn" class="import-sidebar">＋ 間取り画像を読み込む</button>
         <button id="resetPlanBtn" class="reset-plan-btn">配置をすべてリセット</button>
@@ -134,6 +135,18 @@
     <div id="b3Joystick" class="b3-joystick hidden"><i id="b3JoyKnob"></i></div>
     <div class="builder3d-help"><strong>ゲーム感覚で部屋をつくる</strong><span>1〜9・0キーでツール切替。「部屋」で畳数を選んで部屋ごと配置できます。ドラッグで床を塗り、辺をなぞって壁を立て、家具を置いたら「歩く」で中を歩けます。右ドラッグ／2本指で視点回転、ホイール／ピンチでズーム。変更は2D間取り図へ即時反映されます。</span></div>
   </div>
+  <div id="plansModal" class="auto-plan-modal hidden" role="dialog" aria-modal="true" aria-labelledby="plansTitle">
+    <div class="auto-plan-card plans-card">
+      <div class="plans-head"><div><p class="eyebrow">PLANS</p><h2 id="plansTitle">プランの保存と管理</h2></div><button id="closePlansBtn" aria-label="閉じる">×</button></div>
+      <p class="auto-plan-lead">編集中のプランは自動で保存されます。別の案を考えるときは「名前を付けて保存」で分けておくと、あとで見比べられます。</p>
+      <label class="plans-current">編集中のプラン名<input id="planCurrentName" maxlength="60"></label>
+      <div class="plans-row"><input id="planNewName" maxlength="60" placeholder="新しい名前（例：B案 和室あり）" aria-label="新しいプラン名"><button id="savePlanAsBtn" class="primary-lite">名前を付けて保存</button></div>
+      <div class="plans-row tools"><button id="newPlanBtn">＋ 新しいプラン</button><button id="exportCurrentBtn">ファイルに書き出す</button><button id="importPlanBtn">ファイルから読み込む</button><input id="planFileInput" type="file" accept=".json,application/json" hidden></div>
+      <h3>このブラウザに保存したプラン</h3>
+      <ul id="planList" class="plan-list"></ul>
+      <small class="plans-note">※ プランはこのブラウザの中に保存されます。別の端末で開くときやバックアップには「ファイルに書き出す」を使ってください（下絵画像はファイルに含まれません）。</small>
+    </div>
+  </div>
   <div id="autoPlanModal" class="auto-plan-modal hidden" role="dialog" aria-modal="true" aria-labelledby="autoPlanTitle">
     <div class="auto-plan-card">
       <p class="eyebrow">AUTO LAYOUT</p><h2 id="autoPlanTitle">希望条件から間取りを作成</h2>
@@ -166,10 +179,11 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=29"></script>
-  <script src="tatami.js?v=29"></script>
+  <script src="app.js?v=30"></script>
+  <script src="tatami.js?v=30"></script>
+  <script src="plans.js?v=30"></script>
   <script src="vendor/three.min.js?v=0.160.1"></script>
-  <script src="b3assets.js?v=29"></script>
-  <script src="builder3d.js?v=29"></script>
+  <script src="b3assets.js?v=30"></script>
+  <script src="builder3d.js?v=30"></script>
 </body>
 </html>

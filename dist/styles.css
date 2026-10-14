@@ -106,3 +106,30 @@
 .jo-lock>span{display:flex;align-items:center;gap:5px;font-weight:600;color:var(--ink,#25312d)}
 .jo-lock>span input{width:15px;height:15px;margin:0}
 .jo-lock small{display:block;margin-top:3px}
+
+/* v30 plan library */
+.plans-btn{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;margin-top:8px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#25312d;font-weight:700;font-size:12px;cursor:pointer;text-align:left}
+.plans-btn small{font-weight:400;color:var(--muted);font-size:10px}
+.plans-btn:hover{border-color:#2f5d4e}
+.plans-card{width:min(640px,100%);max-height:calc(100vh - 40px);overflow:auto}
+.plans-head{display:flex;justify-content:space-between;align-items:flex-start}
+.plans-head button{border:0;background:transparent;font-size:24px;line-height:1;cursor:pointer;color:#55625c}
+.plans-current{display:flex;flex-direction:column;gap:4px;margin:12px 0 10px;font-size:11px;color:var(--muted)}
+.plans-current input,.plans-row input,.plan-rename{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;color:#25312d;background:#fff}
+.plans-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.plans-row input{flex:1;min-width:180px}
+.plans-row button,.plan-actions button{padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#25312d;font-size:12px;cursor:pointer;white-space:nowrap}
+.plans-row button.primary-lite,.plan-actions .primary-lite{background:#2f5d4e;border-color:#2f5d4e;color:#fff;font-weight:700}
+.plans-row.tools button{flex:1}
+.plans-card h3{margin:16px 0 8px;font-size:13px}
+.plan-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.plan-list li{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.plan-list li.current{border-color:#2f5d4e;box-shadow:0 0 0 2px #2f5d4e22}
+.plan-list li.empty{color:var(--muted);justify-content:center}
+.plan-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.plan-info strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plan-info em{align-self:flex-start;font-style:normal;font-size:10px;color:#fff;background:#2f5d4e;border-radius:4px;padding:1px 6px}
+.plan-info small{color:var(--muted);font-size:11px}
+.plan-actions{display:flex;gap:5px;flex-wrap:wrap}
+.plan-actions .danger{color:#b4442f}
+.plans-note{display:block;margin-top:14px;color:var(--muted);font-size:11px;line-height:1.5}
