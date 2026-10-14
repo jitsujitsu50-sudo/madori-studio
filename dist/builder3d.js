@@ -4,7 +4,7 @@
 const builderCanvas = $('builder3dCanvas');
 let wallHeightCm = 240;
 const B3 = {
-  tool: 'room', roomType: 0, roomJo: 6, roomShape: null, roomKind: 'rect', roomDrag: null, floorMat: 'oak', wallColor: '#ddd5c8', furn: 0, doorType: 'door', winType: 'window', ghostRot: 0,
+  tool: 'room', roomType: 0, roomJo: 6, roomShape: null, roomKind: 'rect', roomDrag: null, wallMode: 'run', floorMat: 'oak', wallColor: '#ddd5c8', furn: 0, doorType: 'door', winType: 'window', ghostRot: 0,
   yaw: Math.PI / 4, pitch: 0.9, dist: 16, target: null, hover: null, stroke: null, orbit: null, pointers: new Map(), pinch: null,
   selectedId: null, dragItem: null, cutaway: false, dirty: true, raf: 0, fitted: false, pop: new Map(), colliders: [],
   walk: { on: false, x: 0, z: 0, h: 0, p: 0, keys: new Set(), last: 0, joy: null, look: null, prevTool: 'add' },
@@ -52,7 +52,7 @@ const TOOLS = [
 ];
 const HINTS = {
   room: '畳数を選んでクリックで部屋を配置（[ ]で奥行き変更・畳数はそのまま／Rで回転）',
-  add: 'ドラッグで床を塗る（バルコニー床は手すり付き。同じ場所なら張り替え）', remove: 'ドラッグで床を消す', wall: '辺をクリック／なぞって壁を追加・削除',
+  add: 'ドラッグで床を塗る（バルコニー床は手すり付き。同じ場所なら張り替え）', remove: 'ドラッグで床を消す', wall: '壁をクリックで撤去・空いた辺をクリックで追加（「1マスずつ」はなぞって部分的に）',
   door: '壁の辺をクリックして扉を設置（7種類）', window: '壁の辺をクリックして窓を設置（掃き出し窓はバルコニーへの出入りに）', furniture: 'クリックで家具を置く（Rで回転）',
   paint: '壁をクリック／なぞって色を塗る', move: '部屋・家具・建具をドラッグで移動（部屋を選ぶと取っ手でサイズ変更）／空き地ドラッグで視点回転', walk: 'WASD・矢印で移動／ドラッグで見回す／Escで終了',
 };
@@ -295,6 +295,57 @@ function b3PlaceRoom(e) {
   items.push(room); B3.pop.set(room.id, performance.now());
   render(); scheduleSave(); B3A.sound('place');
   toast(`${t.name}（${(roomArea(room) / tatami()).toFixed(1)}畳・${(r.w / PX).toFixed(2)}×${(r.h / PX).toFixed(2)}m${r.snapped ? '・隣の部屋に吸着' : ''}）を配置しました`);
+}
+
+// ---------- removing walls: whole straight runs and walls shared with neighbouring rooms ----------
+// Edges of one straight wall containing `e`, stopping at corners / T-junctions. `set` = the edge keys to walk on.
+function wallRunKeys(e, set) {
+  const size = gridPx(), K = (k, gx, gy) => edgeKey(k, gx, gy, size), out = [K(e.k, e.gx, e.gy)];
+  const junction = e.k === 'h' ? (x, y) => set.has(K('v', x, y - 1)) || set.has(K('v', x, y)) : (x, y) => set.has(K('h', x - 1, y)) || set.has(K('h', x, y));
+  if (e.k === 'h') {
+    for (let x = e.gx; !junction(x, e.gy) && set.has(K('h', x - 1, e.gy)); x--) out.push(K('h', x - 1, e.gy));
+    for (let x = e.gx + 1; !junction(x, e.gy) && set.has(K('h', x, e.gy)); x++) out.push(K('h', x, e.gy));
+  } else {
+    for (let y = e.gy; !junction(e.gx, y) && set.has(K('v', e.gx, y - 1)); y--) out.push(K('v', e.gx, y - 1));
+    for (let y = e.gy + 1; !junction(e.gx, y) && set.has(K('v', e.gx, y)); y++) out.push(K('v', e.gx, y));
+  }
+  return out;
+}
+const parseEdgeKey = key => { const [k, x, y, size] = key.split(':'); return { k, gx: Math.round(+x / +size), gy: Math.round(+y / +size) }; };
+// click on a wall in "壁1面ごと" mode: remove (or restore) the whole straight wall
+function toggleWallRun(e) {
+  if (e.itemId) return toggleEdge(e);
+  const size = gridPx(), key = edgeKey(e.k, e.gx, e.gy, size), tiles = normalizedTiles(), { all, visible } = visibleAutoEdges(tiles), hidden = new Set(hiddenEdges);
+  const [a, b] = edgePoints(e, size), covered = items.some(i => i.type === 'wall' && wallItemCovers(i, a, b));
+  if (covered) return toggleEdge(e);
+  if (visible.has(key)) {
+    const run = wallRunKeys(e, new Set(visible.keys())); b3Checkpoint(); run.forEach(k => { if (!hidden.has(k)) hiddenEdges.push(k); });
+    B3.stroke && (B3.stroke.changed = true); B3A.sound('remove'); return 'remove';
+  }
+  if (all.has(key) && hidden.has(key)) {
+    const hiddenAuto = new Set([...hidden].filter(k => all.has(k))), run = new Set(wallRunKeys(e, hiddenAuto)); b3Checkpoint();
+    hiddenEdges = hiddenEdges.filter(k => !run.has(k)); B3.stroke && (B3.stroke.changed = true); B3A.sound('wall'); return 'add';
+  }
+  return toggleEdge(e);
+}
+// walls between the selected room and rooms touching it (キッチン + LD → LDK)
+function sharedWallKeys(r) {
+  const size = gridPx(), mine = new Set(roomCellKeys(r).map(c => c.join(':'))), owner = new Map();
+  otherRooms(r.id).forEach(o => roomCellKeys(o).forEach(c => { const k = c.join(':'); if (!mine.has(k)) owner.set(k, o.id); }));
+  const keys = [], rooms = new Set();
+  roomCellKeys(r).forEach(([x, y]) => {
+    [[x, y - 1, 'h', x, y], [x, y + 1, 'h', x, y + 1], [x - 1, y, 'v', x, y], [x + 1, y, 'v', x + 1, y]].forEach(([nx, ny, k, gx, gy]) => {
+      const o = owner.get(nx + ':' + ny); if (o) { keys.push(edgeKey(k, gx, gy, size)); rooms.add(o); }
+    });
+  });
+  return { keys, rooms: [...rooms] };
+}
+function toggleConnect(r) {
+  const { keys, rooms } = sharedWallKeys(r); if (!keys.length) { toast('くっついている部屋がありません（部屋を隣に吸着させてから使ってください）'); return; }
+  const hidden = new Set(hiddenEdges), allHidden = keys.every(k => hidden.has(k)); checkpoint();
+  if (allHidden) { const ks = new Set(keys); hiddenEdges = hiddenEdges.filter(k => !ks.has(k)); toast('隣の部屋との壁を戻しました'); B3A.sound('wall'); }
+  else { keys.forEach(k => { if (!hidden.has(k)) hiddenEdges.push(k); }); const names = rooms.map(id => items.find(i => i.id === id)?.name.replace(/\s\d+$/, '')).join('・'); toast(`${names}との間の壁をなくしました（ひと続きの空間になります）`); B3A.sound('remove'); }
+  render(); scheduleSave(); b3UpdateSelection();
 }
 
 // ---------- selecting, moving and resizing placed rooms ----------
@@ -642,9 +693,11 @@ function b3UpdateGhost() {
   } else if ((tool === 'wall' || tool === 'door' || tool === 'window') && h.edge) {
     const e = h.edge, mid = e.k === 'h' ? [(e.gx + 0.5) * s, e.gy * s] : [e.gx * s, (e.gy + 0.5) * s], ry = e.k === 'h' ? 0 : -Math.PI / 2;
     if (tool === 'wall') {
-      const H = wallH(); key = 'wall' + H + h.edgeAction;
-      build = () => ghostify(new THREE.Mesh(new THREE.BoxGeometry(s, H, B3_THICK + 0.02), B3A.mat('#f0a733')), h.edgeAction === 'remove' ? '#e0533d' : '#f0a733');
-      place = g => { g.position.set(mid[0], H / 2, mid[1]); g.rotation.y = ry; };
+      const H = wallH(), run = h.run || [edgeKey(e.k, e.gx, e.gy)], cells = run.map(parseEdgeKey), lo = Math.min(...cells.map(c => e.k === 'h' ? c.gx : c.gy)), hi = Math.max(...cells.map(c => e.k === 'h' ? c.gx : c.gy)) + 1;
+      const len = (hi - lo) * s, rmid = e.k === 'h' ? [(lo + hi) / 2 * s, e.gy * s] : [e.gx * s, (lo + hi) / 2 * s];
+      key = 'wall' + H + h.edgeAction + run.join('|');
+      build = () => ghostify(new THREE.Mesh(new THREE.BoxGeometry(len, H + 0.04, B3_THICK + 0.05), B3A.mat('#f0a733')), h.edgeAction === 'remove' ? '#e0533d' : '#f0a733');
+      place = g => { g.position.set(rmid[0], H / 2, rmid[1]); g.rotation.y = ry; };
     } else {
       const okey = tool === 'door' ? B3.doorType : B3.winType, o = openingDims(okey), door = o.type === 'door' || o.type === 'sliding-door', top = Math.min(o.style === 'small' ? 1.75 : 2.0, wallH());
       key = okey + top;
@@ -721,7 +774,8 @@ function b3UpdateSelection() {
   const i = items.find(x => x.id === B3.selectedId); $('builder3dSelection').classList.toggle('hidden', !i); if (!i) return;
   const room = i.type === 'room';
   $('b3SelName').textContent = room ? `${i.name}・${(roomArea(i) / tatami()).toFixed(1)}畳・${(i.w / PX).toFixed(2)}×${(i.h / PX).toFixed(2)}m` : i.name;
-  $('b3LockJo').classList.toggle('hidden', !room);
+  $('b3LockJo').classList.toggle('hidden', !room); $('b3Connect').classList.toggle('hidden', !room);
+  if (room) { const sw = sharedWallKeys(i), hid = new Set(hiddenEdges), on = sw.keys.length && sw.keys.every(k => hid.has(k)); $('b3Connect').textContent = on ? '隣との壁を戻す' : '隣とつなげる'; $('b3Connect').disabled = !sw.keys.length; $('b3Connect').title = sw.keys.length ? 'くっついている部屋との間の壁をまとめて撤去／復活' : '隣にくっついた部屋がありません'; }
   if (room) { $('b3LockJo').textContent = i.tatami ? '畳数固定 ON' : '畳数固定 OFF'; $('b3LockJo').classList.toggle('active', !!i.tatami); }
   $('b3SelHint').textContent = room ? 'ドラッグで移動・オレンジの取っ手でサイズ変更' : '';
 }
@@ -752,6 +806,7 @@ function b3RenderPalette() {
   } else if (t === 'add') html = Object.entries(B3A.FLOORS).map(([k, f]) => `<button data-mat="${k}" class="${k === B3.floorMat ? 'active' : ''}"><img alt="" src="${B3A.swatch(k)}"><span>${f.name}</span></button>`).join('');
   else if (t === 'paint') html = B3A.WALL_COLORS.map(([c, n]) => `<button data-wcolor="${c}" class="${c === B3.wallColor ? 'active' : ''}"><i style="background:${c}"></i><span>${n}</span></button>`).join('');
   else if (t === 'furniture') html = B3A.CATALOG.map((c, n) => `<button data-furn="${n}" class="${n === B3.furn ? 'active' : ''}"><span>${c.name}</span></button>`).join('') + `<button data-ghost-rot><span>↻ 回転 (R)</span></button>`;
+  else if (t === 'wall') html = `<button data-wmode="run" class="${B3.wallMode === 'run' ? 'active' : ''}"><span>壁1面ごと</span></button><button data-wmode="cell" class="${B3.wallMode !== 'run' ? 'active' : ''}"><span>1マスずつ（なぞる）</span></button><em class="b3-pal-note">赤く光った壁をクリックで撤去／消した所をクリックで復活</em>`;
   else if (t === 'door') html = DOOR_KEYS.map(k => `<button data-door="${k}" class="${k === B3.doorType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
   else if (t === 'window') html = WINDOW_KEYS.map(k => `<button data-win="${k}" class="${k === B3.winType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
   p.innerHTML = html; p.classList.toggle('hidden', !html); p.classList.toggle('b3-palette-side', t === 'room');
@@ -762,6 +817,7 @@ function b3RenderPalette() {
   p.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { B3.floorMat = b.dataset.mat; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-wcolor]').forEach(b => b.onclick = () => { B3.wallColor = b.dataset.wcolor; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-furn]').forEach(b => b.onclick = () => { B3.furn = +b.dataset.furn; b3ghostKey = ''; b3RenderPalette(); });
+  p.querySelectorAll('[data-wmode]').forEach(b => b.onclick = () => { B3.wallMode = b.dataset.wmode; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-door]').forEach(b => b.onclick = () => { B3.doorType = b.dataset.door; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-win]').forEach(b => b.onclick = () => { B3.winType = b.dataset.win; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-ghost-rot]').forEach(b => b.onclick = () => { B3.ghostRot = (B3.ghostRot + 90) % 360; b3ghostKey = ''; if (B3.tool === 'room') b3RenderPalette(); b3UpdateGhost(); b3Draw(); });
@@ -847,7 +903,9 @@ function b3PointerDown(e) {
   if (t === 'wall') {
     const ed = b3Edge(e), g = b3Ground(e); if (!ed) return;
     const s = cellM(), ends = ed.k === 'h' ? [[ed.gx, ed.gy], [ed.gx + 1, ed.gy]] : [[ed.gx, ed.gy], [ed.gx, ed.gy + 1]], near = g ? ends.sort((p, q) => Math.hypot(p[0] * s - g.x, p[1] * s - g.z) - Math.hypot(q[0] * s - g.x, q[1] * s - g.z))[0] : ends[1];
-    B3.stroke = { kind: 'wall', changed: false, saved: false, t0: performance.now(), lastV: near }; B3.stroke.action = toggleEdge(ed); b3MarkDirty(); return;
+    B3.stroke = { kind: 'wall', changed: false, saved: false, t0: performance.now(), lastV: near }; B3.stroke.action = B3.wallMode === 'run' ? toggleWallRun(ed) : toggleEdge(ed);
+    if (B3.wallMode === 'run') B3.stroke.noDrag = true;   // whole wall per click: no per-cell dragging
+    b3MarkDirty(); return;
   }
   if (t === 'door' || t === 'window') { const ed = b3Edge(e); if (ed) b3PlaceOpening(ed); return; }
   if (t === 'furniture') { b3PlaceFurniture(e); return; }
@@ -892,7 +950,7 @@ function b3PointerMove(e) {
   }
   const st = B3.stroke;
   if (st?.kind === 'floor') { const c = b3Cell(e); if (c && (c.gx !== st.last?.gx || c.gy !== st.last?.gy)) b3PaintTo(c); }
-  else if (st?.kind === 'wall') {
+  else if (st?.kind === 'wall' && !st.noDrag) {
     const g = b3Ground(e);
     if (g) { // walk grid vertices so a drag draws clean straight / L-shaped walls
       const s = cellM(), tx = Math.round(g.x / s), ty = Math.round(g.z / s); let [vx, vy] = st.lastV, n = 0;
@@ -905,8 +963,9 @@ function b3PointerMove(e) {
     if (tool === 'add' || tool === 'remove') B3.hover = { cell: b3Cell(e) };
     else if (tool === 'wall' || tool === 'door' || tool === 'window') {
       const edge = b3Edge(e); let edgeAction = 'add';
-      if (edge && tool === 'wall') { const size = gridPx(), [a, b] = edgePoints(edge, size), key = edgeKey(edge.k, edge.gx, edge.gy, size), { visible } = visibleAutoEdges(normalizedTiles()); edgeAction = edge.itemId || visible.has(key) || items.some(i => i.type === 'wall' && wallItemCovers(i, a, b)) ? 'remove' : 'add'; if (st?.action) edgeAction = st.action; }
-      B3.hover = { edge, edgeAction };
+      if (edge && tool === 'wall') { const size = gridPx(), [a, b] = edgePoints(edge, size), key = edgeKey(edge.k, edge.gx, edge.gy, size), { visible } = visibleAutoEdges(normalizedTiles()); edgeAction = edge.itemId || visible.has(key) || items.some(i => i.type === 'wall' && wallItemCovers(i, a, b)) ? 'remove' : 'add'; if (st?.action) edgeAction = st.action;
+        if (B3.wallMode === 'run' && !edge.itemId && !st) { const { all } = visibleAutoEdges(normalizedTiles()), hid = new Set(hiddenEdges); if (visible.has(key)) var run = wallRunKeys(edge, new Set(visible.keys())); else if (all.has(key) && hid.has(key)) run = wallRunKeys(edge, new Set([...hid].filter(k => all.has(k)))); } }
+      B3.hover = { edge, edgeAction, run: typeof run !== 'undefined' ? run : null };
     } else if (tool === 'furniture') B3.hover = { furn: furniturePlacement(e) };
     else if (tool === 'room') B3.hover = { room: roomPlacement(e) };
     else if (tool === 'paint') B3.hover = { wall: b3Pick(e, isWallMesh) };
@@ -958,6 +1017,7 @@ $('b3UndoBtn').onclick = () => $('undoBtn').click();
 $('b3ExitWalk').onclick = () => b3StopWalk();
 function b3UpdateSound() { const m = B3A.isMuted(); $('b3SoundBtn').textContent = m ? '🔇' : '🔊'; $('b3SoundBtn').title = m ? '効果音オフ' : '効果音オン'; }
 $('b3SoundBtn').onclick = () => { B3A.setMuted(!B3A.isMuted()); b3UpdateSound(); B3A.sound('select'); };
+$('b3Connect').onclick = () => { const r = selectedRoom(); if (r) toggleConnect(r); };
 $('b3LockJo').onclick = () => { const r = selectedRoom(); if (!r) return; checkpoint(); if (r.tatami) delete r.tatami; else r.tatami = Math.round(roomArea(r) / tatami() * 10) / 10; render(); scheduleSave(); b3UpdateSelection(); B3A.sound('select'); };
 $('b3RotateItem').onclick = () => { const it = items.find(i => i.id === B3.selectedId); if (!it) return; if (it.type === 'room') { rotateRoom(it); B3A.sound('select'); return; } checkpoint(); it.rotation = ((it.rotation || 0) + 90) % 360; render(); scheduleSave(); B3A.sound('select'); };
 $('b3DeleteItem').onclick = () => { if (!B3.selectedId) return; const sr = selectedRoom(); if (sr) { deleteRoom(sr); return; } checkpoint(); items = items.filter(i => i.id !== B3.selectedId); B3.selectedId = null; selected = null; render(); scheduleSave(); b3UpdateSelection(); B3A.sound('remove'); };

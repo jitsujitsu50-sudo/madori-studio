@@ -151,3 +151,8 @@
   .builder3d-modal:has(.b3-palette-side) .builder3d-help{display:none}
 }
 @media (min-width:901px){.builder3d-selection{top:auto;bottom:100px}}
+
+/* v32 wall removal */
+#b3Connect.hidden{display:none}
+#b3Connect:disabled{opacity:.4;cursor:default}
+.b3-pal-note{font-style:normal;color:#f2c776;font-size:11px;align-self:center;white-space:nowrap;padding:0 6px}
