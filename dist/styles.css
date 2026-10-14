@@ -76,3 +76,33 @@
   .b3-walk-hud{top:8px;max-width:calc(100% - 16px)}.b3-walk-hud span{display:none}
   .builder3d-selection{top:auto;bottom:146px}
 }
+
+/* v29 tatami sizing */
+.room-size{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;font-size:11px;color:var(--muted)}
+.room-size select{flex:1;max-width:120px;padding:5px 6px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:12px}
+.tatami-field{display:grid;grid-template-columns:1fr 1.4fr;gap:8px;align-items:end;margin-top:8px}
+.tatami-field.hidden{display:none}
+.tatami-field>label:first-child{position:relative}
+.tatami-field>label:first-child>span{position:absolute;right:8px;top:29px;color:var(--muted);font-weight:400}
+.jo-lock{display:flex;flex-direction:column;gap:2px;font-size:11px}
+.jo-lock input{width:auto;margin-right:4px}
+.jo-lock small{color:var(--muted);font-size:9px;line-height:1.35}
+.b3-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.b3-labels>div{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;padding:3px 8px;border-radius:7px;background:#141b19c4;color:#fff;font-size:11px;line-height:1.25;white-space:nowrap;box-shadow:0 3px 10px #0004}
+.b3-labels b{font-size:11px}.b3-labels span{color:#f2c776;font-size:10px}
+.builder3d-modal.walking .b3-labels{display:none}
+.b3-ghost-label{position:absolute;left:0;top:0;display:flex;flex-direction:column;align-items:center;padding:6px 10px;border:1px solid #f0a733;border-radius:8px;background:#141b19e6;color:#fff;font-size:12px;pointer-events:none;white-space:nowrap}
+.b3-ghost-label.hidden{display:none}.b3-ghost-label span{color:#f2c776;font-size:11px}
+.b3-pal-group{display:flex;gap:5px;align-items:center;padding-right:8px;margin-right:2px;border-right:1px solid #ffffff22}
+.b3-pal-group:last-child{border-right:0}
+.b3-pal-group em{font-style:normal;color:#f2c776;font-size:11px;white-space:nowrap;padding-left:4px}
+.b3-palette button:disabled{opacity:.35;cursor:default}
+.b3-jo button{min-width:44px}
+.builder3d-status .b3-scale{color:#cbd4cf}
+@media (min-width:901px){.b3-palette{flex-wrap:wrap;justify-content:center;max-width:min(920px,calc(100% - 360px));row-gap:6px}.b3-pal-group{flex-wrap:wrap;justify-content:center;border-right:0;padding-right:0}}
+@media (max-width:900px){.builder3d-status{max-width:calc(100% - 16px)}.builder3d-status b{font-size:11px;white-space:normal}}
+.tatami-field{align-items:start}
+.jo-lock{padding-top:22px}
+.jo-lock>span{display:flex;align-items:center;gap:5px;font-weight:600;color:var(--ink,#25312d)}
+.jo-lock>span input{width:15px;height:15px;margin:0}
+.jo-lock small{display:block;margin-top:3px}

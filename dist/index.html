@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f3ee">
   <title>間取りスタジオ</title>
-  <link rel="stylesheet" href="styles.css?v=28">
+  <link rel="stylesheet" href="styles.css?v=29">
 </head>
 <body>
   <header class="topbar">
@@ -33,6 +33,7 @@
       </section>
       <section>
         <div class="section-title"><span>部屋</span><small>クリックで追加</small></div>
+        <label class="room-size">広さ<select id="roomJo" aria-label="追加する部屋の畳数"></select></label>
         <div class="tool-grid" id="roomTools">
           <button data-add="room" data-name="リビング" data-w="320" data-h="230"><span class="tool-icon room-icon"></span>リビング</button>
           <button data-add="room" data-name="寝室" data-w="240" data-h="210"><span class="tool-icon room-icon warm"></span>寝室</button>
@@ -94,6 +95,7 @@
       <div id="propertyForm" class="property-form hidden">
         <label>名前<input id="propName"></label>
         <div class="measure-grid"><label>幅・長さ <span>m</span><input id="propW" type="number" min="0.1" step="0.1"></label><label id="propDepthLabel">奥行 <span>m</span><input id="propH" type="number" min="0.1" step="0.1"></label></div>
+        <div id="tatamiField" class="tatami-field hidden"><label>畳数 <span>畳</span><input id="propJo" type="number" min="0.5" step="0.5"></label><label class="jo-lock"><span><input id="propJoLock" type="checkbox"> 畳数を固定</span><small>幅か奥行きを変えると、もう一方が自動で変わります</small></label></div>
         <div class="measure-grid"><label>X位置 <span>m</span><input id="propX" type="number" min="0" step="0.1"></label><label>Y位置 <span>m</span><input id="propY" type="number" min="0" step="0.1"></label></div>
         <label>回転 <span>°</span><input id="propRotation" type="number" min="0" max="359" step="1"></label>
         <label id="thicknessField" class="hidden">線の太さ <span>cm</span><input id="propThickness" type="number" min="5" max="100" step="5"></label>
@@ -126,9 +128,11 @@
     <div id="b3Hotbar" class="b3-hotbar" role="toolbar" aria-label="ツール（1〜9キー）"></div>
     <div id="builder3dSelection" class="builder3d-selection hidden"><span id="b3SelName"></span><button id="b3RotateItem">90°回転 (R)</button><button id="b3DeleteItem" class="danger">削除</button></div>
     <div id="builder3dStatus" class="builder3d-status"></div>
+    <div id="b3Labels" class="b3-labels" aria-hidden="true"></div>
+    <div id="b3GhostLabel" class="b3-ghost-label hidden"></div>
     <div class="b3-walk-hud"><strong>ウォークモード</strong><span>WASD・矢印で移動／ドラッグで見回す／Shiftで速く</span><button id="b3ExitWalk">歩くのをやめる (Esc)</button></div>
     <div id="b3Joystick" class="b3-joystick hidden"><i id="b3JoyKnob"></i></div>
-    <div class="builder3d-help"><strong>ゲーム感覚で部屋をつくる</strong><span>1〜9キーでツール切替。ドラッグで床を塗り、辺をなぞって壁を立て、家具を置いたら「歩く」で中を歩けます。右ドラッグ／2本指で視点回転、ホイール／ピンチでズーム。変更は2D間取り図へ即時反映されます。</span></div>
+    <div class="builder3d-help"><strong>ゲーム感覚で部屋をつくる</strong><span>1〜9・0キーでツール切替。「部屋」で畳数を選んで部屋ごと配置できます。ドラッグで床を塗り、辺をなぞって壁を立て、家具を置いたら「歩く」で中を歩けます。右ドラッグ／2本指で視点回転、ホイール／ピンチでズーム。変更は2D間取り図へ即時反映されます。</span></div>
   </div>
   <div id="autoPlanModal" class="auto-plan-modal hidden" role="dialog" aria-modal="true" aria-labelledby="autoPlanTitle">
     <div class="auto-plan-card">
@@ -162,9 +166,10 @@
     </div>
   </div>
   <div id="toast" class="toast" role="status"></div>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
+  <script src="tatami.js?v=29"></script>
   <script src="vendor/three.min.js?v=0.160.1"></script>
-  <script src="b3assets.js?v=28"></script>
-  <script src="builder3d.js?v=28"></script>
+  <script src="b3assets.js?v=29"></script>
+  <script src="builder3d.js?v=29"></script>
 </body>
 </html>

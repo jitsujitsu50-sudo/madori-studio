@@ -18,9 +18,10 @@
 
 ## 構成
 - 静的サイト。ビルド不要。公開対象は `dist/` のみ。
-- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v28）。
+- `dist/index.html` — UI。CSS/JS は `?v=番号` でキャッシュ対策。**変更したら番号を上げる**（現在 v29）。
 - `dist/app.js` — 2D間取り編集。`items`（部屋・壁・建具・家具）と `floorTiles` を管理。
-- `dist/builder3d.js` — 3Dルームビルダー（three.js / WebGL）。編集ツール・ホットバー・ゴースト表示・ウォークモード。
+- `dist/tatami.js` — 2D の畳数指定（部屋追加時の畳数、プロパティの畳数・畳数固定、リサイズ時の面積維持）。`app.js` の直後に読み込み、`updateInspector`/`smartResize`/プロパティ入力を上書きする。
+- `dist/builder3d.js` — 3Dルームビルダー（three.js / WebGL）。編集ツール・ホットバー（1〜9・0キー：部屋/床/消す/壁/ドア/窓/家具/塗る/移動/歩く）・ゴースト表示・部屋ラベル・ウォークモード。
 - `dist/b3assets.js` — 3D素材（手続き生成テクスチャ、環境光、家具/建具モデル、効果音）。`builder3d.js` より先に読み込む。
 - `dist/vendor/three.min.js` — three.js r160.1（同梱。外部CDN不使用）。
 - `dist/styles.css`
@@ -36,16 +37,18 @@
 - 床マスの床材は `floorTiles[].mat`（oak/walnut/whiteoak/tile/marble/tatami/carpet/mortar/deck）。`deck` はバルコニー床：屋外扱いで、室内床との境は壁、外気側の辺は手すり（自動壁の `rail:true`）になる。`mat` なしの古いデータは `color` で着色した木目で表示。2Dで色を塗り直すと `mat` は消える。
 - 自動壁の壁色は `wallPaint`（キー = hiddenEdges と同じ辺キー → 色）。
 - 家具の3D形状は名前で決まる（`B3A.kind`: ベッド/ソファ/キッチン/テレビ/テーブル/デスク/椅子/植物/ラグ/収納）。
+- 部屋アイテムの追加フィールド `tatami`（数値）＝畳数固定。面積 `tatami × 畳の規格(tatami())` を維持する（幅を変えると奥行きが追従）。3Dの「部屋」ツールで置いた部屋は選んだ畳数で固定される（グリッドに合わせるため実面積は近似。ラベルに実際の畳数を表示）。
 - ドア・窓は 2D の opening アイテム（door は item の下辺が壁線）。3D の見た目の種類は追加フィールド `style`：door=両開き`double`/玄関`entrance`/ガラス`glass`、sliding-door=片引き`single`/引き違い`double`/折れ戸`folding`/掃き出し窓`hakidashi`、window=小窓`small`。一覧は `builder3d.js` の `OPENINGS`。
 
 ## 変更後の確認（必須）
-1. `node --check dist/app.js && node --check dist/b3assets.js && node --check dist/builder3d.js`
+1. `node --check dist/app.js && node --check dist/tatami.js && node --check dist/b3assets.js && node --check dist/builder3d.js`
 2. 実ブラウザで操作確認（3D: 床ドラッグ・壁・ドア/窓・家具移動・視点、2D同期、リロード後の保存）
 3. index.html のバージョン番号を上げてコミット → `main` に push
 
 ## 履歴メモ
 - v25: Sites 公開済み（canvas 2D のアイソメ表示）
 - v26: three.js 化、床ドラッグ塗り、3D壁編集、ドア/窓、家具移動、カメラ回転/ズーム、タッチ対応
+- v29: 畳数で部屋を作成（2D: 広さ選択・畳数固定、3D: 部屋ツール＝12種のプリセット×1〜24畳、奥行き変更で畳数維持）、3D部屋ラベル、延床の坪数と規模の目安、タッチは「タップで配置」に変更
 - v28: バルコニー（デッキ床＋手すり）、扉7種・窓4種（掃き出し窓で出入り可）、浴槽・トイレ・洗面台・洗濯機・冷蔵庫
 - v27: ゲーム風UI（ホットバー1〜9キー、ゴースト表示、ポップ演出、効果音）、床材テクスチャ、壁塗り、幅木、建具部分の壁くり抜き、詳細な家具モデル、一人称ウォークモード（衝突判定・タッチスティック）
 
