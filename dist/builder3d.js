@@ -4,7 +4,7 @@
 const builderCanvas = $('builder3dCanvas');
 let wallHeightCm = 240;
 const B3 = {
-  tool: 'room', roomType: 0, roomJo: 6, roomShape: null, roomKind: 'rect', roomDrag: null, wallMode: 'run', floorMat: 'oak', wallColor: '#ddd5c8', furn: 0, doorType: 'door', winType: 'window', ghostRot: 0,
+  tool: 'room', roomType: 0, roomJo: 6, roomShape: null, roomKind: 'rect', roomDrag: null, wallMode: 'run', floorMat: 'oak', wallColor: '#ddd5c8', furn: 0, furnCat: null, doorType: 'door', winType: 'window', ghostRot: 0,
   yaw: Math.PI / 4, pitch: 0.9, dist: 16, target: null, hover: null, stroke: null, orbit: null, pointers: new Map(), pinch: null,
   selectedId: null, dragItem: null, cutaway: false, dirty: true, raf: 0, fitted: false, pop: new Map(), colliders: [],
   walk: { on: false, x: 0, z: 0, h: 0, p: 0, keys: new Set(), last: 0, joy: null, look: null, prevTool: 'add' },
@@ -27,6 +27,7 @@ const OPENINGS = {
 };
 const DOOR_KEYS = ['door', 'double', 'entrance', 'glassdoor', 'sliding', 'slidingDouble', 'folding'], WINDOW_KEYS = ['window', 'fixed', 'small', 'hakidashi'];
 const isDeck = t => t.mat === 'deck';
+const isOutdoor = t => !!(B3A.FLOORS[t.mat] && B3A.FLOORS[t.mat].outdoor);   // deck, grass, gravel, concrete: no walls of their own
 // Room stamp presets: typical size (畳) and floor material
 const ROOM_TYPES = [
   { name: '洋室', jo: 6, mat: 'oak', color: '#f1e7d4' }, { name: '和室', jo: 6, mat: 'tatami', color: '#e9e4c6' },
@@ -34,9 +35,11 @@ const ROOM_TYPES = [
   { name: '子供部屋', jo: 4.5, mat: 'oak', color: '#f1e7d4' }, { name: 'キッチン', jo: 4, mat: 'tile', color: '#e2ebdf' },
   { name: '浴室', jo: 2, mat: 'tile', color: '#dce9ee' }, { name: '洗面所', jo: 2, mat: 'tile', color: '#dce9ee' },
   { name: 'トイレ', jo: 1, mat: 'tile', color: '#dce9ee' }, { name: '玄関', jo: 2, mat: 'mortar', color: '#e7e5dd' },
-  { name: '廊下', jo: 2, mat: 'oak', color: '#efe9de' }, { name: '収納', jo: 1, mat: 'whiteoak', color: '#ece7de' },
+  { name: '廊下', jo: 2, mat: 'oak', color: '#efe9de', ratio: 4, maxR: 8 }, { name: '収納', jo: 1, mat: 'whiteoak', color: '#ece7de' },
+  { name: 'クローゼット', jo: 2, mat: 'whiteoak', color: '#ece7de', ratio: 2.2 }, { name: 'ウォークインクローゼット', jo: 3, mat: 'whiteoak', color: '#ece7de' },
+  { name: '庭', jo: 20, mat: 'grass', color: '#dfe8cf', outdoor: true }, { name: '駐車場', jo: 8, mat: 'concrete', color: '#e2e1dd', outdoor: true, ratio: 0.5 },
 ];
-const ROOM_JO = [1, 1.5, 2, 3, 4, 4.5, 6, 8, 10, 12, 14, 16, 18, 20, 24];
+const ROOM_JO = [1, 1.5, 2, 3, 4, 4.5, 6, 8, 10, 12, 14, 16, 18, 20, 24, 30, 40];
 
 const TOOLS = [
   ['room', '部屋', 'M3 5h18v14H3zM3 12h9v7M12 5v4'],
@@ -53,7 +56,7 @@ const TOOLS = [
 const HINTS = {
   room: '畳数を選んでクリックで部屋を配置（[ ]で奥行き変更・畳数はそのまま／Rで回転）',
   add: 'ドラッグで床を塗る（バルコニー床は手すり付き。同じ場所なら張り替え）', remove: 'ドラッグで床を消す', wall: '壁をクリックで撤去・空いた辺をクリックで追加（「1マスずつ」はなぞって部分的に）',
-  door: '壁の辺をクリックして扉を設置（7種類）', window: '壁の辺をクリックして窓を設置（掃き出し窓はバルコニーへの出入りに）', furniture: 'クリックで家具を置く（Rで回転）',
+  door: '壁の辺をクリックして扉を設置（7種類）', window: '壁の辺をクリックして窓を設置（掃き出し窓はバルコニーへの出入りに）', furniture: '種類→タイプを選んでクリックで置く（Rで回転）。置いた家具は「移動」で選ぶと種類を変更できます',
   paint: '壁をクリック／なぞって色を塗る', move: '部屋・家具・建具をドラッグで移動（部屋を選ぶと取っ手でサイズ変更）／空き地ドラッグで視点回転', walk: 'WASD・矢印で移動／ドラッグで見回す／Escで終了',
 };
 
@@ -79,7 +82,7 @@ function wallEligibleTiles(tiles) {
 function edgeKey(k, gx, gy, size = gridPx()) { return `${k}:${gx * size}:${gy * size}:${size}`; }
 function edgePoints(e, size = gridPx()) { const x = e.gx * size, y = e.gy * size; return e.k === 'h' ? [[x, y], [x + size, y]] : [[x, y], [x, y + size]]; }
 function autoEdges(tiles) {
-  const size = gridPx(), indoor = tiles.filter(t => !isDeck(t)), deck = tiles.filter(isDeck), edges = new Map(), add = (k, gx, gy, rail) => { const key = edgeKey(k, gx, gy, size); if (!edges.has(key)) edges.set(key, rail ? { k, gx, gy, rail: true } : { k, gx, gy }); };
+  const size = gridPx(), indoor = tiles.filter(t => !isOutdoor(t)), deck = tiles.filter(isDeck), outside = new Set(tiles.filter(isOutdoor).map(t => `${t.gx}:${t.gy}`)), edges = new Map(), add = (k, gx, gy, rail) => { const key = edgeKey(k, gx, gy, size); if (!edges.has(key)) edges.set(key, rail ? { k, gx, gy, rail: true } : { k, gx, gy }); };
   const inSet = new Set(indoor.map(t => `${t.gx}:${t.gy}`)), deckSet = new Set(deck.map(t => `${t.gx}:${t.gy}`)), elig = wallEligibleTiles(indoor);
   // walls: perimeter of indoor floor groups (a balcony next to the room is outside, so the wall stays)
   indoor.forEach(t => {
@@ -90,7 +93,7 @@ function autoEdges(tiles) {
     if (!inSet.has(`${t.gx + 1}:${t.gy}`)) add('v', t.gx + 1, t.gy);
   });
   // railings: balcony edges facing open air
-  const open = (x, y) => !inSet.has(`${x}:${y}`) && !deckSet.has(`${x}:${y}`);
+  const open = (x, y) => !inSet.has(`${x}:${y}`) && !deckSet.has(`${x}:${y}`) && !outside.has(`${x}:${y}`);   // no rail between a deck and the garden
   deck.forEach(t => {
     if (open(t.gx, t.gy - 1)) add('h', t.gx, t.gy, true);
     if (open(t.gx, t.gy + 1)) add('h', t.gx, t.gy + 1, true);
@@ -207,7 +210,7 @@ function roomCentroid(r) {
 function rotatePts(pts, k) { let p = pts.map(q => [...q]); for (let i = 0; i < k; i++) p = p.map(([u, v]) => [1 - v, u]); return p; }   // 90° clockwise steps
 function lPoints(w, d, nw, nd) { const a = (w - nw) / w, b = nd / d; return [[0, 0], [a, 0], [a, b], [1, b], [1, 1], [0, 1]]; }       // notch at the top-right
 // Grid-aligned candidates whose area is closest to the chosen 畳 count.
-function roomShapes(jo, kind = 'rect') {
+function roomShapes(jo, kind = 'rect', maxR = 3.2) {
   const g = cellM(), A = jo * tatami(), out = [];
   if (kind === 'L') {
     for (let m = 2; m * g <= 14; m++) {
@@ -221,17 +224,17 @@ function roomShapes(jo, kind = 'rect') {
     }
     if (out.length) return out;
   }
-  for (let n = 1; n * g <= 14; n++) {
+  for (let n = 1; n * g <= 20; n++) {
     const d = n * g, w = Math.max(g, Math.round(A / d / g) * g), r = w / d, err = Math.abs(w * d - A) / A;
-    if (r < 1 / 3.2 || r > 3.2 || err > 0.2) continue;
+    if (r < 1 / maxR || r > maxR || err > 0.2) continue;
     if (!out.some(o => Math.abs(o.w - w) < 1e-6 && Math.abs(o.d - d) < 1e-6)) out.push({ w, d, err });
   }
   if (!out.length) { const w = Math.max(g, Math.round(Math.sqrt(A) / g) * g); out.push({ w, d: w, err: Math.abs(w * w - A) / A }); }
   return out;
 }
 function currentRoomShape() {
-  const kind = B3.roomKind || 'rect', list = roomShapes(B3.roomJo, kind);
-  if (B3.roomShape == null || B3.roomShape >= list.length) B3.roomShape = list.reduce((best, o, i) => { const sc = o.err * 4 + Math.abs(Math.log(o.w / o.d / 0.8)); return sc < best.sc ? { sc, i } : best; }, { sc: 1e9, i: 0 }).i;
+  const kind = B3.roomKind || 'rect', pre = ROOM_TYPES[B3.roomType] || {}, list = roomShapes(B3.roomJo, kind, pre.maxR), pref = pre.ratio || 0.8;
+  if (B3.roomShape == null || B3.roomShape >= list.length) B3.roomShape = list.reduce((best, o, i) => { const sc = o.err * 4 + Math.abs(Math.log(o.w / o.d / pref)); return sc < best.sc ? { sc, i } : best; }, { sc: 1e9, i: 0 }).i;
   const o = list[B3.roomShape], k = (B3.ghostRot / 90) % 4, swap = k % 2 === 1;
   const base = o.nw ? lPoints(o.w, o.d, o.nw, o.nd) : RECT, points = rotatePts(base, k);
   return { w: swap ? o.d : o.w, d: swap ? o.w : o.d, points, area: o.nw ? o.w * o.d - o.nw * o.nd : o.w * o.d, n: list.length, idx: B3.roomShape, kind: o.nw ? 'L' : 'rect' };
@@ -320,11 +323,11 @@ function toggleWallRun(e) {
   if (covered) return toggleEdge(e);
   if (visible.has(key)) {
     const run = wallRunKeys(e, new Set(visible.keys())); b3Checkpoint(); run.forEach(k => { if (!hidden.has(k)) hiddenEdges.push(k); });
-    B3.stroke && (B3.stroke.changed = true); B3A.sound('remove'); return 'remove';
+    B3.stroke && (B3.stroke.changed = true, B3.stroke.run = true); B3A.sound('remove'); return 'remove';
   }
   if (all.has(key) && hidden.has(key)) {
     const hiddenAuto = new Set([...hidden].filter(k => all.has(k))), run = new Set(wallRunKeys(e, hiddenAuto)); b3Checkpoint();
-    hiddenEdges = hiddenEdges.filter(k => !run.has(k)); B3.stroke && (B3.stroke.changed = true); B3A.sound('wall'); return 'add';
+    hiddenEdges = hiddenEdges.filter(k => !run.has(k)); B3.stroke && (B3.stroke.changed = true, B3.stroke.run = true); B3A.sound('wall'); return 'add';
   }
   return toggleEdge(e);
 }
@@ -668,7 +671,7 @@ function furniturePlacement(e) {
   const p = b3Ground(e); if (!p) return null;
   const c = B3A.CATALOG[B3.furn], W = c.w * PX, Dp = c.d * PX, rot = B3.ghostRot, swap = rot % 180 !== 0, fw = swap ? Dp : W, fd = swap ? W : Dp;
   const left = snap(p.x * PX - fw / 2), top = snap(p.z * PX - fd / 2), cx = left + fw / 2, cy = top + fd / 2;
-  return { name: c.name, x: cx - W / 2, y: cy - Dp / 2, w: W, h: Dp, rotation: rot };
+  return { name: c.name, variant: c.v, x: cx - W / 2, y: cy - Dp / 2, w: W, h: Dp, rotation: rot };
 }
 
 // ---------------- ghost preview ----------------
@@ -717,7 +720,7 @@ function b3UpdateGhost() {
     place = () => {};
   } else if (tool === 'furniture' && h.furn) {
     const f = h.furn; key = 'f' + B3.furn;
-    build = () => ghostify(B3A.furniture({ name: f.name, w: f.w, h: f.h }));
+    build = () => ghostify(B3A.furniture({ name: f.name, variant: f.variant, w: f.w, h: f.h }));
     place = g => { g.position.set((f.x + f.w / 2) / PX, FLOOR_T, (f.y + f.h / 2) / PX); g.rotation.y = -f.rotation * Math.PI / 180; };
   } else if (tool === 'paint' && h.wall) {
     const o = h.wall.object; key = 'paint' + o.uuid + B3.wallColor;
@@ -756,7 +759,7 @@ function openingDims(key) {
 }
 function b3PlaceOpening(e) {
   const size = gridPx(), [a, b] = edgePoints(e, size), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-  const indoor = new Set(floorTiles.filter(t => t.size === size && !isDeck(t)).map(t => `${Math.round(t.x / size)}:${Math.round(t.y / size)}`));
+  const indoor = new Set(floorTiles.filter(t => t.size === size && !isOutdoor(t)).map(t => `${Math.round(t.x / size)}:${Math.round(t.y / size)}`));
   const key = B3.tool === 'door' ? B3.doorType : B3.winType, o = openingDims(key); let rot = e.k === 'h' ? 0 : 90;
   if (o.type === 'door') { if (e.k === 'h') rot = indoor.has(`${e.gx}:${e.gy}`) ? 180 : 0; else rot = indoor.has(`${e.gx}:${e.gy}`) ? 90 : 270; }  // swing into the room
   const r = rot * Math.PI / 180, lift = o.type === 'door' ? o.h / 2 : 0, cx = mx + Math.sin(r) * lift, cy = my - Math.cos(r) * lift;
@@ -777,11 +780,15 @@ function b3UpdateSelection() {
   $('b3LockJo').classList.toggle('hidden', !room); $('b3Connect').classList.toggle('hidden', !room);
   if (room) { const sw = sharedWallKeys(i), hid = new Set(hiddenEdges), on = sw.keys.length && sw.keys.every(k => hid.has(k)); $('b3Connect').textContent = on ? '隣との壁を戻す' : '隣とつなげる'; $('b3Connect').disabled = !sw.keys.length; $('b3Connect').title = sw.keys.length ? 'くっついている部屋との間の壁をまとめて撤去／復活' : '隣にくっついた部屋がありません'; }
   if (room) { $('b3LockJo').textContent = i.tatami ? '畳数固定 ON' : '畳数固定 OFF'; $('b3LockJo').classList.toggle('active', !!i.tatami); }
-  $('b3SelHint').textContent = room ? 'ドラッグで移動・オレンジの取っ手でサイズ変更' : '';
+  const furn = i.type === 'furniture', vs = $('b3Variant'), n = furn ? B3A.catalogIndex(i) : -1; vs.classList.toggle('hidden', n < 0);
+  if (n >= 0) { const cat = B3A.CATALOG[n].cat, sig = i.id + ':' + n; if (vs.dataset.sig !== sig) { vs.innerHTML = `<optgroup label="${cat}の種類">${B3A.CATALOG.map((c, m) => c.cat === cat ? `<option value="${m}"${m === n ? ' selected' : ''}>${c.name}（${c.w}×${c.d}m）</option>` : '').join('')}</optgroup>`; vs.dataset.sig = sig; } }
+  $('b3SelHint').textContent = room ? 'ドラッグで移動・オレンジの取っ手でサイズ変更' : n >= 0 ? 'ドラッグで移動・左の▼で種類を変更' : '';
 }
 function b3UpdateStatus() {
-  const area = floorTiles.filter(t => !isDeck(t)).reduce((a, t) => a + (t.size / PX) ** 2, 0), deck = floorTiles.filter(isDeck).reduce((a, t) => a + (t.size / PX) ** 2, 0);
-  $('builder3dStatus').innerHTML = `<b>延床 ${area.toFixed(1)}㎡（${(area / 3.3058).toFixed(1)}坪・${(area / tatami()).toFixed(1)}畳）</b><span class="b3-scale">${houseScale(area)}${deck ? `・バルコニー ${deck.toFixed(1)}㎡` : ''}</span><span>壁高 ${wallHeightCm}cm${lowered() ? '（壁を下げて表示中）' : ''}</span><small>${HINTS[B3.tool] || ''}</small>`;
+  const area = floorTiles.filter(t => !isOutdoor(t)).reduce((a, t) => a + (t.size / PX) ** 2, 0), outA = {};
+  floorTiles.filter(isOutdoor).forEach(t => { const n = { deck: 'バルコニー', grass: '庭', gravel: '砂利', concrete: 'コンクリート' }[t.mat] || t.mat; outA[n] = (outA[n] || 0) + (t.size / PX) ** 2; });
+  const deck = Object.entries(outA).map(([n, a]) => `${n} ${a.toFixed(1)}㎡`).join('・');
+  $('builder3dStatus').innerHTML = `<b>延床 ${area.toFixed(1)}㎡（${(area / 3.3058).toFixed(1)}坪・${(area / tatami()).toFixed(1)}畳）</b><span class="b3-scale">${houseScale(area)}${deck ? `・${deck}` : ''}</span><span>壁高 ${wallHeightCm}cm${lowered() ? '（壁を下げて表示中）' : ''}</span><small>${HINTS[B3.tool] || ''}</small>`;
 }
 
 // ---------------- tools, hotbar & palette ----------------
@@ -805,18 +812,24 @@ function b3RenderPalette() {
       + `<div class="b3-pal-group"><button data-rkind="rect" class="${B3.roomKind !== 'L' ? 'active' : ''}"><span>□ 四角</span></button><button data-rkind="L" class="${B3.roomKind === 'L' ? 'active' : ''}"><span>L字</span></button><button data-depth="-1" ${sh.idx <= 0 ? 'disabled' : ''}><span>奥行き − [</span></button><button data-depth="1" ${sh.idx >= sh.n - 1 ? 'disabled' : ''}><span>奥行き ＋ ]</span></button><button data-ghost-rot><span>↻ 回転 (R)</span></button><em>${sh.w.toFixed(2)}×${sh.d.toFixed(2)}m・実際${(sh.area / tatami()).toFixed(1)}畳</em></div>`;
   } else if (t === 'add') html = Object.entries(B3A.FLOORS).map(([k, f]) => `<button data-mat="${k}" class="${k === B3.floorMat ? 'active' : ''}"><img alt="" src="${B3A.swatch(k)}"><span>${f.name}</span></button>`).join('');
   else if (t === 'paint') html = B3A.WALL_COLORS.map(([c, n]) => `<button data-wcolor="${c}" class="${c === B3.wallColor ? 'active' : ''}"><i style="background:${c}"></i><span>${n}</span></button>`).join('');
-  else if (t === 'furniture') html = B3A.CATALOG.map((c, n) => `<button data-furn="${n}" class="${n === B3.furn ? 'active' : ''}"><span>${c.name}</span></button>`).join('') + `<button data-ghost-rot><span>↻ 回転 (R)</span></button>`;
+  else if (t === 'furniture') {
+    const cat = B3.furnCat || B3A.CATALOG[B3.furn].cat;
+    html = `<div class="b3-pal-group b3-cats">${B3A.CATS.map(c => `<button data-fcat="${c}" class="${c === cat ? 'active' : ''}"><span>${c}</span></button>`).join('')}</div>`
+      + `<div class="b3-pal-group b3-variants">${B3A.CATALOG.map((c, n) => c.cat !== cat ? '' : `<button data-furn="${n}" class="${n === B3.furn ? 'active' : ''}"><span>${c.name}</span><small>${c.w}×${c.d}m</small></button>`).join('')}</div>`
+      + `<div class="b3-pal-group"><button data-ghost-rot><span>↻ 回転 (R)</span></button><em>置いた家具は「移動」で選ぶと種類を変えられます</em></div>`;
+  }
   else if (t === 'wall') html = `<button data-wmode="run" class="${B3.wallMode === 'run' ? 'active' : ''}"><span>壁1面ごと</span></button><button data-wmode="cell" class="${B3.wallMode !== 'run' ? 'active' : ''}"><span>1マスずつ（なぞる）</span></button><em class="b3-pal-note">赤く光った壁をクリックで撤去／消した所をクリックで復活</em>`;
   else if (t === 'door') html = DOOR_KEYS.map(k => `<button data-door="${k}" class="${k === B3.doorType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
   else if (t === 'window') html = WINDOW_KEYS.map(k => `<button data-win="${k}" class="${k === B3.winType ? 'active' : ''}"><span>${OPENINGS[k].name}</span></button>`).join('');
-  p.innerHTML = html; p.classList.toggle('hidden', !html); p.classList.toggle('b3-palette-side', t === 'room');
+  p.innerHTML = html; p.classList.toggle('hidden', !html); p.classList.toggle('b3-palette-side', t === 'room' || t === 'furniture');
   p.querySelectorAll('[data-rtype]').forEach(b => b.onclick = () => { B3.roomType = +b.dataset.rtype; B3.roomJo = ROOM_TYPES[B3.roomType].jo; B3.roomShape = null; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-jo]').forEach(b => b.onclick = () => { B3.roomJo = +b.dataset.jo; B3.roomShape = null; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-rkind]').forEach(b => b.onclick = () => { B3.roomKind = b.dataset.rkind; B3.roomShape = null; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-depth]').forEach(b => b.onclick = () => b3RoomDepth(+b.dataset.depth));
   p.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { B3.floorMat = b.dataset.mat; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-wcolor]').forEach(b => b.onclick = () => { B3.wallColor = b.dataset.wcolor; b3ghostKey = ''; b3RenderPalette(); });
-  p.querySelectorAll('[data-furn]').forEach(b => b.onclick = () => { B3.furn = +b.dataset.furn; b3ghostKey = ''; b3RenderPalette(); });
+  p.querySelectorAll('[data-fcat]').forEach(b => b.onclick = () => { B3.furnCat = b.dataset.fcat; B3.furn = B3A.CATALOG.findIndex(c => c.cat === B3.furnCat); b3ghostKey = ''; b3RenderPalette(); });
+  p.querySelectorAll('[data-furn]').forEach(b => b.onclick = () => { B3.furn = +b.dataset.furn; B3.furnCat = B3A.CATALOG[B3.furn].cat; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-wmode]').forEach(b => b.onclick = () => { B3.wallMode = b.dataset.wmode; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-door]').forEach(b => b.onclick = () => { B3.doorType = b.dataset.door; b3ghostKey = ''; b3RenderPalette(); });
   p.querySelectorAll('[data-win]').forEach(b => b.onclick = () => { B3.winType = b.dataset.win; b3ghostKey = ''; b3RenderPalette(); });
@@ -825,7 +838,7 @@ function b3RenderPalette() {
 }
 
 function b3RoomDepth(step) {   // change depth while keeping the 畳 count (width follows)
-  const sh = currentRoomShape(), list = roomShapes(B3.roomJo); B3.roomShape = Math.max(0, Math.min(list.length - 1, sh.idx + (B3.ghostRot % 180 ? -step : step)));
+  const sh = currentRoomShape(), list = roomShapes(B3.roomJo, B3.roomKind || 'rect', (ROOM_TYPES[B3.roomType] || {}).maxR); B3.roomShape = Math.max(0, Math.min(list.length - 1, sh.idx + (B3.ghostRot % 180 ? -step : step)));
   b3ghostKey = ''; b3RenderPalette(); b3UpdateGhost(); b3Draw();
 }
 // ---------------- walk mode ----------------
@@ -904,7 +917,7 @@ function b3PointerDown(e) {
     const ed = b3Edge(e), g = b3Ground(e); if (!ed) return;
     const s = cellM(), ends = ed.k === 'h' ? [[ed.gx, ed.gy], [ed.gx + 1, ed.gy]] : [[ed.gx, ed.gy], [ed.gx, ed.gy + 1]], near = g ? ends.sort((p, q) => Math.hypot(p[0] * s - g.x, p[1] * s - g.z) - Math.hypot(q[0] * s - g.x, q[1] * s - g.z))[0] : ends[1];
     B3.stroke = { kind: 'wall', changed: false, saved: false, t0: performance.now(), lastV: near }; B3.stroke.action = B3.wallMode === 'run' ? toggleWallRun(ed) : toggleEdge(ed);
-    if (B3.wallMode === 'run') B3.stroke.noDrag = true;   // whole wall per click: no per-cell dragging
+    if (B3.stroke.run) B3.stroke.noDrag = true;   // a whole wall was toggled: no per-cell dragging (drawing a new wall still drags)
     b3MarkDirty(); return;
   }
   if (t === 'door' || t === 'window') { const ed = b3Edge(e); if (ed) b3PlaceOpening(ed); return; }
@@ -1005,7 +1018,19 @@ function b3AnimateYaw(delta) { const from = B3.yaw, to = from + delta, t0 = perf
 
 // wrap 2D render so undo/redo and 2D edits refresh the 3D scene
 const renderBefore3d = render;
-render = function () { renderBefore3d(); if (B3.selectedId && !items.some(i => i.id === B3.selectedId)) B3.selectedId = null; if (b3Open()) { b3UpdateSelection(); b3MarkDirty(); } };
+function shape2dFurniture() {
+  items.forEach(i => {
+    if (i.type !== 'furniture') return; const m = B3A.model(i), el = canvas.querySelector(`.plan-item[data-id="${i.id}"]`); if (!el) return;
+    if (m === 'roundTable' || m === 'roundRug') el.style.borderRadius = '50%';
+    else if (m === 'lsofa' || m === 'ldesk' || m === 'couch') {
+      const dep = m === 'ldesk' ? Math.min(0.6, i.h / PX * 0.5, i.w / PX * 0.45) : m === 'lsofa' ? Math.min(0.9, i.h / PX * 0.6, i.w / PX * 0.45) : Math.min(0.9, i.h / PX * 0.65), fy = dep * PX / i.h * 100;
+      const fx = m === 'ldesk' ? dep * PX / i.w * 100 : m === 'lsofa' ? 100 - dep * PX / i.w * 100 : 100 - Math.min(0.8, i.w / PX * 0.4) * PX / i.w * 100;
+      el.style.clipPath = m === 'ldesk' ? `polygon(0 0,100% 0,100% ${fy}%,${fx}% ${fy}%,${fx}% 100%,0 100%)` : `polygon(0 0,100% 0,100% 100%,${fx}% 100%,${fx}% ${fy}%,0 ${fy}%)`;
+    }
+  });
+}
+render = function () { renderBefore3d(); shape2dFurniture(); if (B3.selectedId && !items.some(i => i.id === B3.selectedId)) B3.selectedId = null; if (b3Open()) { b3UpdateSelection(); b3MarkDirty(); } };
+shape2dFurniture();   // the first 2D render ran before this file loaded
 
 $('builder3dBtn').onclick = () => { $('builder3dModal').classList.remove('hidden'); B3.fitted = false; B3.selectedId = null; b3RenderHotbar(); b3RenderPalette(); b3UpdateSelection(); b3UpdateSound(); requestAnimationFrame(resizeBuilder); };
 $('closeBuilder3dBtn').onclick = () => { b3EndStroke(); if (B3.walk.on) b3StopWalk(); $('builder3dModal').classList.add('hidden'); B3.selectedId = null; render(); toast('3D編集を間取り図へ反映しました'); };
@@ -1017,6 +1042,11 @@ $('b3UndoBtn').onclick = () => $('undoBtn').click();
 $('b3ExitWalk').onclick = () => b3StopWalk();
 function b3UpdateSound() { const m = B3A.isMuted(); $('b3SoundBtn').textContent = m ? '🔇' : '🔊'; $('b3SoundBtn').title = m ? '効果音オフ' : '効果音オン'; }
 $('b3SoundBtn').onclick = () => { B3A.setMuted(!B3A.isMuted()); b3UpdateSound(); B3A.sound('select'); };
+$('b3Variant').onchange = () => {
+  const i = items.find(x => x.id === B3.selectedId), c = B3A.CATALOG[+$('b3Variant').value]; if (!i || i.type !== 'furniture' || !c) return;
+  checkpoint(); const cx = i.x + i.w / 2, cy = i.y + i.h / 2; i.w = c.w * PX; i.h = c.d * PX; i.x = cx - i.w / 2; i.y = cy - i.h / 2; i.name = c.name; i.variant = c.v;
+  B3.pop.set(i.id, performance.now()); render(); scheduleSave(); B3A.sound('place'); toast(`${c.name}に変更しました`); $('b3Variant').blur();
+};
 $('b3Connect').onclick = () => { const r = selectedRoom(); if (r) toggleConnect(r); };
 $('b3LockJo').onclick = () => { const r = selectedRoom(); if (!r) return; checkpoint(); if (r.tatami) delete r.tatami; else r.tatami = Math.round(roomArea(r) / tatami() * 10) / 10; render(); scheduleSave(); b3UpdateSelection(); B3A.sound('select'); };
 $('b3RotateItem').onclick = () => { const it = items.find(i => i.id === B3.selectedId); if (!it) return; if (it.type === 'room') { rotateRoom(it); B3A.sound('select'); return; } checkpoint(); it.rotation = ((it.rotation || 0) + 90) % 360; render(); scheduleSave(); B3A.sound('select'); };

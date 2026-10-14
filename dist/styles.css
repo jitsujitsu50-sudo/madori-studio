@@ -156,3 +156,10 @@
 #b3Connect.hidden{display:none}
 #b3Connect:disabled{opacity:.4;cursor:default}
 .b3-pal-note{font-style:normal;color:#f2c776;font-size:11px;align-self:center;white-space:nowrap;padding:0 6px}
+
+/* v33 furniture variants */
+#b3Variant{background:#2b2f2c;color:#fff;border:1px solid #ffffff33;border-radius:8px;padding:6px 8px;font:inherit;font-size:12px;max-width:220px}
+#b3Variant.hidden{display:none}
+.b3-palette-side .b3-variants button{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+.b3-palette-side .b3-variants button small{opacity:.6;font-size:9px}
+.b3-palette-side .b3-cats button{font-weight:600}
